@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=./defaults_schema.json
+paths:
+  normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/T\
+    hesis/Ravelli-normalized/"
+  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli"
+  cache: "cache"
+  model_output: "models"
+
+defaults:
+  dataset:
+    classes: [ "NORMAL", "CNV", "DRUSEN", "DME" ]
+    samples_per_class: 1000
+    sampling_proportions:
+      train: 80
+      val: 10
+      test: 10
+
+  preprocessing:
+    "cropping": { "left": 10, "right": 10, "top": 10, "bottom": 10 }
+    "corner_artifact_remover": { threshold: 250 }
+    "dwt_filter": { "wavelet": "coif3", mode: "hard", "wavelet_levels": 3 }
+    "median_filter": { "kernel_size": 3 }
+    "nlm_filter": { "h": 5.0, "template_window": 21, search_window: 51 }
+    "bilateral_filter": { "d": 5, "sigma_color": 20, "sigma_space": 20 }
+    "clahe_filter": { "clip_limit": 2.0, "tile_grid_size": [ 8, 8 ] }
+    "rpe_align": {}
+    "rust": {}
+
+  # List of all possible extractors and their parameters
+  feature_extractors:
+    hog:
+      orientations: 9 # Standard number of gradient direction bins
+      pixels_per_cell: [ 32, 32 ] # Evaluates an 8x8 pixel block
+      cells_per_block: [ 2, 2 ] # Normalizes across a 2x2 block of cells
+
+    lbp:
+      n_points: 8 # Number of circularly symmetric neighbor set points
+      radius: 1 # Radius of circle
+      method: "uniform" # Standard method for rotational invariance
+
+    cdch:
+      center: [ 0.5, 0.75 ]
+      pixel_range: [ 12, 254 ]
+      angle_step: 4 # Full 360-degree resolution as defined in your core logic
+      bins: 128
+
+    dch:
+      sections: 64
+      layout: "row"
+      pixel_range: [ 12, 254 ]
+      bins: 128
+
+    rdch:
+      rings: 64
+      center: [ 0.5, 0.7 ]
+      pixel_range: [ 12, 254 ]
+      bins: 128
+
+  reducers:
+    pca:
+      n_components: 1000
+      whiten: true
+
+  # List of all possible classifiers and their parameters
+  classifiers:
+    svm:
+      kernel: "rbf" # Scikit-learn default (Radial Basis Function)
+      C: 1.0 # Standard regularization parameter
+      gamma: "scale" # Automatically scales variance based on your features
+      probability: false # Default is false, change to true if you need ROC/AUC metrics
+
+    random_forest:
+      n_estimators: 100 # Standard number of trees
+      max_depth: null # Nodes expand until all leaves are pure
+      min_samples_split: 2 # Minimum samples required to split an internal node
+      random_state: 42 # Standard seed to ensure your baseline runs are 100% reproducible
+
+    knn:
+      n_neighbors: 5 # The standard "K"
+      weights: "uniform" # All points in a neighborhood are weighted equally
+      p: 2 # Power parameter for the Minkowski metric (2 = standard Euclidean distance)

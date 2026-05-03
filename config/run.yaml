@@ -1,0 +1,38 @@
+random_seed: 42
+
+dataset:
+  classes: [ "NORMAL", "CNV", "DRUSEN", "DME" ]
+  samples_per_class: 1000
+  sampling_proportions:
+    train: 80
+    val: 10
+    test: 10
+
+preprocessing_pipeline:
+  - corner_artifact_remover:
+      threshold: 250
+  - dwt_filter:
+      wavelet: "coif3"
+      mode: "hard"
+      wavelet_levels: 3
+  - rpe_align: {}
+
+feature_extractor:
+  active: "dch"
+  params:
+    sections: 64
+    layout: "row"
+    pixel_range: [ 12, 254 ]
+    bins: 128
+
+dimensionality_reduction:
+  active: "pca"
+  params:
+    n_components: 50
+
+classifier:
+  active: "svm"
+  params:
+    kernel: "rbf"
+    C: 1.0
+    gamma: "scale"

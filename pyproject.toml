@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oct"
+version = "0.3.0"
+description = "OCT image classification"
+dependencies = [
+    # Images
+    "pillow>=12.2.0",
+    "opencv-python>=4.13.0",
+    "scikit-image>=0.26.0",
+    "scikit-learn>=1.8.0",
+
+    # Visual
+    "seaborn>=0.13.0",
+    "matplotlib>=3.10.0",
+    "rich>=15.0",
+
+    "numpy>=2.4.4",
+    "joblib>=1.5.0",
+
+    "pydantic>=2.13.0",
+    "pyyaml",
+
+    "maturin>=1.13.0",
+
+    # Tests
+    "pytest",
+    "pytest-benchmark",
+]
+
+[project.scripts]
+run-oct = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

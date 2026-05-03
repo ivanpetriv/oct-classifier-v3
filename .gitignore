@@ -1,0 +1,31 @@
+.idea/
+*.iws
+out/
+
+# Rust
+rust/target/
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Sensitive information
+.env
+*.secrets
+
+# Operating System files
+.DS_Store
+Thumbs.db
