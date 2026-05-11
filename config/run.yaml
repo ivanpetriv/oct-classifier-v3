@@ -1,4 +1,12 @@
+# yaml-language-server: $schema=./run_schema.json
 random_seed: 42
+
+paths:
+  normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/T\
+    hesis/Ravelli-normalized/"
+  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli"
+  cache: "cache"
+  model_output: "models"
 
 dataset:
   classes: [ "NORMAL", "CNV", "DRUSEN", "DME" ]
@@ -10,29 +18,29 @@ dataset:
 
 preprocessing_pipeline:
   - corner_artifact_remover:
-      threshold: 250
-  - dwt_filter:
+      min_threshold: 250
+  - dwt_denoiser:
       wavelet: "coif3"
       mode: "hard"
       wavelet_levels: 3
-  - rpe_align: {}
+  - rpe_aligner: {}
 
 feature_extractor:
-  active: "dch"
+  active: "rcldch"
   params:
-    sections: 64
-    layout: "row"
-    pixel_range: [ 12, 254 ]
-    bins: 128
+    sections: 32
+    pixel_range: [ 24, 241 ]
+    bins: 256
 
 dimensionality_reduction:
   active: "pca"
   params:
-    n_components: 50
+    n_components: 200
+    whiten: True
 
 classifier:
   active: "svm"
   params:
     kernel: "rbf"
-    C: 1.0
+    C: 82.96749960979622
     gamma: "scale"

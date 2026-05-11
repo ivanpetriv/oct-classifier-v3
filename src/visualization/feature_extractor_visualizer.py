@@ -5,10 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from config_settings.oct_config import OctConfig
 from feature_extraction.base_feature_extractor import BaseFeaturesExtractor
 from feature_extraction.extractors.cdch_feature_extractor import CdchFeaturesExtractor
 from feature_extraction.extractors.ldch_feature_extractor import LdchFeaturesExtractor
 from feature_extraction.extractors.rdch_feature_extractor import RdchFeaturesExtractor
+from feature_extraction.registry import FeatureExtractorRegistry
 
 
 class FeatureExtractorVisualizer:
@@ -177,7 +179,11 @@ class FeatureExtractorVisualizer:
 
 
 if __name__ == "__main__":
-    feature_extractor = LdchFeaturesExtractor(256, "col", (0, 255), 256)
+    config = OctConfig.from_yaml("config/run.yaml")
+
+    feature_extractor = FeatureExtractorRegistry.create(
+        config.feature_extractor.active, **vars(config.feature_extractor.params)
+    )
     visualizer = FeatureExtractorVisualizer(feature_extractor)
     with Image.open(
         r"/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized/train/CNV/CNV-163081-45.jpeg"

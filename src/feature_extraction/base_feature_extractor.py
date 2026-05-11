@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class BaseFeaturesExtractor(ABC):
+class BaseFeaturesExtractor(ABC, BaseEstimator, TransformerMixin):
     """
     Base class for extracting features from an image.
     """
@@ -14,3 +15,14 @@ class BaseFeaturesExtractor(ABC):
         :return: Numpy array representing the extracted features.
         """
         ...
+
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None):
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        features = []
+
+        for image in X:
+            feat = self.extract(image)
+            features.append(feat)
+        return np.array(features)

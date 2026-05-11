@@ -1,0 +1,774 @@
+{
+    "$defs": {
+        "CDCHConfig": {
+            "properties": {
+                "active": {
+                    "const": "cdch",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__CDCHConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "CDCHConfig",
+            "type": "object"
+        },
+        "DCHConfig": {
+            "properties": {
+                "active": {
+                    "const": "dch",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__DCHConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "DCHConfig",
+            "type": "object"
+        },
+        "Dataset": {
+            "properties": {
+                "classes": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                },
+                "samples_per_class": {
+                    "exclusiveMinimum": 0,
+                    "title": "Samples Per Class",
+                    "type": "integer"
+                },
+                "sampling_proportions": {
+                    "$ref": "#/$defs/SamplingProportions"
+                }
+            },
+            "required": [
+                "classes",
+                "samples_per_class",
+                "sampling_proportions"
+            ],
+            "title": "Dataset",
+            "type": "object"
+        },
+        "HOGConfig": {
+            "properties": {
+                "active": {
+                    "const": "hog",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__HOGConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "HOGConfig",
+            "type": "object"
+        },
+        "KNNConfig": {
+            "properties": {
+                "active": {
+                    "const": "knn",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__KNNConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "KNNConfig",
+            "type": "object"
+        },
+        "LBPConfig": {
+            "properties": {
+                "active": {
+                    "const": "lbp",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__LBPConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "LBPConfig",
+            "type": "object"
+        },
+        "NoneReducerConfig": {
+            "properties": {
+                "active": {
+                    "const": "none",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "additionalProperties": true,
+                    "title": "Params",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "active"
+            ],
+            "title": "NoneReducerConfig",
+            "type": "object"
+        },
+        "PCAConfig": {
+            "properties": {
+                "active": {
+                    "const": "pca",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__PCAConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "PCAConfig",
+            "type": "object"
+        },
+        "Paths": {
+            "properties": {
+                "normalized_dataset": {
+                    "format": "path",
+                    "title": "Normalized Dataset",
+                    "type": "string"
+                },
+                "original_dataset": {
+                    "format": "path",
+                    "title": "Original Dataset",
+                    "type": "string"
+                },
+                "cache": {
+                    "format": "path",
+                    "title": "Cache",
+                    "type": "string"
+                },
+                "model_output": {
+                    "format": "path",
+                    "title": "Model Output",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "normalized_dataset",
+                "original_dataset",
+                "cache",
+                "model_output"
+            ],
+            "title": "Paths",
+            "type": "object"
+        },
+        "RCLDCHConfig": {
+            "properties": {
+                "active": {
+                    "const": "rcldch",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__RCLDCHConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "RCLDCHConfig",
+            "type": "object"
+        },
+        "RDCHConfig": {
+            "properties": {
+                "active": {
+                    "const": "rdch",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__RDCHConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "RDCHConfig",
+            "type": "object"
+        },
+        "RandomForestConfig": {
+            "properties": {
+                "active": {
+                    "const": "random_forest",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__RandomForestConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "RandomForestConfig",
+            "type": "object"
+        },
+        "SVMConfig": {
+            "properties": {
+                "active": {
+                    "const": "svm",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__SVMConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "SVMConfig",
+            "type": "object"
+        },
+        "SamplingProportions": {
+            "properties": {
+                "train": {
+                    "exclusiveMinimum": 0,
+                    "title": "Train",
+                    "type": "integer"
+                },
+                "val": {
+                    "exclusiveMinimum": 0,
+                    "title": "Val",
+                    "type": "integer"
+                },
+                "test": {
+                    "exclusiveMinimum": 0,
+                    "title": "Test",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "train",
+                "val",
+                "test"
+            ],
+            "title": "SamplingProportions",
+            "type": "object"
+        },
+        "config_settings__oct_config__CDCHConfig__Params": {
+            "properties": {
+                "center": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "title": "Center",
+                    "type": "array"
+                },
+                "pixel_range": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Pixel Range",
+                    "type": "array"
+                },
+                "angle_step": {
+                    "title": "Angle Step",
+                    "type": "integer"
+                },
+                "bins": {
+                    "title": "Bins",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "center",
+                "pixel_range",
+                "angle_step",
+                "bins"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__DCHConfig__Params": {
+            "properties": {
+                "sections": {
+                    "title": "Sections",
+                    "type": "integer"
+                },
+                "layout": {
+                    "enum": [
+                        "row",
+                        "col"
+                    ],
+                    "title": "Layout",
+                    "type": "string"
+                },
+                "pixel_range": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Pixel Range",
+                    "type": "array"
+                },
+                "bins": {
+                    "title": "Bins",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "sections",
+                "layout",
+                "pixel_range",
+                "bins"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__HOGConfig__Params": {
+            "properties": {
+                "orientations": {
+                    "title": "Orientations",
+                    "type": "integer"
+                },
+                "pixels_per_cell": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Pixels Per Cell",
+                    "type": "array"
+                },
+                "cells_per_block": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Cells Per Block",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "orientations",
+                "pixels_per_cell",
+                "cells_per_block"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__KNNConfig__Params": {
+            "properties": {
+                "n_neighbors": {
+                    "title": "N Neighbors",
+                    "type": "integer"
+                },
+                "weights": {
+                    "enum": [
+                        "uniform",
+                        "distance"
+                    ],
+                    "title": "Weights",
+                    "type": "string"
+                },
+                "p": {
+                    "title": "P",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "n_neighbors",
+                "weights",
+                "p"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__LBPConfig__Params": {
+            "properties": {
+                "n_points": {
+                    "title": "N Points",
+                    "type": "integer"
+                },
+                "radius": {
+                    "title": "Radius",
+                    "type": "integer"
+                },
+                "method": {
+                    "enum": [
+                        "default",
+                        "ror",
+                        "uniform",
+                        "var"
+                    ],
+                    "title": "Method",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "n_points",
+                "radius",
+                "method"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__PCAConfig__Params": {
+            "properties": {
+                "n_components": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "title": "N Components"
+                },
+                "whiten": {
+                    "default": false,
+                    "title": "Whiten",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "n_components"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__RCLDCHConfig__Params": {
+            "properties": {
+                "sections": {
+                    "title": "Sections",
+                    "type": "integer"
+                },
+                "pixel_range": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Pixel Range",
+                    "type": "array"
+                },
+                "bins": {
+                    "title": "Bins",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "sections",
+                "pixel_range",
+                "bins"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__RDCHConfig__Params": {
+            "properties": {
+                "rings": {
+                    "title": "Rings",
+                    "type": "integer"
+                },
+                "center": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "title": "Center",
+                    "type": "array"
+                },
+                "pixel_range": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Pixel Range",
+                    "type": "array"
+                },
+                "bins": {
+                    "title": "Bins",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "rings",
+                "center",
+                "pixel_range",
+                "bins"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__RandomForestConfig__Params": {
+            "properties": {
+                "n_estimators": {
+                    "title": "N Estimators",
+                    "type": "integer"
+                },
+                "max_depth": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Max Depth"
+                },
+                "min_samples_split": {
+                    "title": "Min Samples Split",
+                    "type": "integer"
+                },
+                "random_state": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Random State"
+                }
+            },
+            "required": [
+                "n_estimators",
+                "min_samples_split"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__SVMConfig__Params": {
+            "properties": {
+                "kernel": {
+                    "enum": [
+                        "linear",
+                        "poly",
+                        "rbf",
+                        "sigmoid"
+                    ],
+                    "title": "Kernel",
+                    "type": "string"
+                },
+                "C": {
+                    "title": "C",
+                    "type": "number"
+                },
+                "gamma": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "title": "Gamma"
+                },
+                "probability": {
+                    "default": false,
+                    "title": "Probability",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "kernel",
+                "C",
+                "gamma"
+            ],
+            "title": "Params",
+            "type": "object"
+        }
+    },
+    "additionalProperties": false,
+    "properties": {
+        "paths": {
+            "$ref": "#/$defs/Paths"
+        },
+        "random_seed": {
+            "title": "Random Seed",
+            "type": "integer"
+        },
+        "dataset": {
+            "$ref": "#/$defs/Dataset"
+        },
+        "preprocessing_pipeline": {
+            "items": {
+                "additionalProperties": {
+                    "additionalProperties": true,
+                    "type": "object"
+                },
+                "type": "object"
+            },
+            "title": "Preprocessing Pipeline",
+            "type": "array"
+        },
+        "feature_extractor": {
+            "discriminator": {
+                "mapping": {
+                    "cdch": "#/$defs/CDCHConfig",
+                    "dch": "#/$defs/DCHConfig",
+                    "hog": "#/$defs/HOGConfig",
+                    "lbp": "#/$defs/LBPConfig",
+                    "rcldch": "#/$defs/RCLDCHConfig",
+                    "rdch": "#/$defs/RDCHConfig"
+                },
+                "propertyName": "active"
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/HOGConfig"
+                },
+                {
+                    "$ref": "#/$defs/LBPConfig"
+                },
+                {
+                    "$ref": "#/$defs/CDCHConfig"
+                },
+                {
+                    "$ref": "#/$defs/DCHConfig"
+                },
+                {
+                    "$ref": "#/$defs/RDCHConfig"
+                },
+                {
+                    "$ref": "#/$defs/RCLDCHConfig"
+                }
+            ],
+            "title": "Feature Extractor"
+        },
+        "dimensionality_reduction": {
+            "discriminator": {
+                "mapping": {
+                    "none": "#/$defs/NoneReducerConfig",
+                    "pca": "#/$defs/PCAConfig"
+                },
+                "propertyName": "active"
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/PCAConfig"
+                },
+                {
+                    "$ref": "#/$defs/NoneReducerConfig"
+                }
+            ],
+            "title": "Dimensionality Reduction"
+        },
+        "classifier": {
+            "discriminator": {
+                "mapping": {
+                    "knn": "#/$defs/KNNConfig",
+                    "random_forest": "#/$defs/RandomForestConfig",
+                    "svm": "#/$defs/SVMConfig"
+                },
+                "propertyName": "active"
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/SVMConfig"
+                },
+                {
+                    "$ref": "#/$defs/RandomForestConfig"
+                },
+                {
+                    "$ref": "#/$defs/KNNConfig"
+                }
+            ],
+            "title": "Classifier"
+        }
+    },
+    "required": [
+        "paths",
+        "random_seed",
+        "dataset",
+        "preprocessing_pipeline",
+        "feature_extractor",
+        "dimensionality_reduction",
+        "classifier"
+    ],
+    "title": "OctConfig",
+    "type": "object"
+}

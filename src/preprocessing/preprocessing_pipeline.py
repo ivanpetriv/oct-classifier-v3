@@ -14,6 +14,12 @@ class PreprocessingPipeline:
         self.steps = steps
         self.hooks = hooks or {}
 
+    def add_hook(self, name: str, func: Callable[..., None]) -> None:
+        self.hooks.setdefault(name, []).append(func)
+
+    def remove_hook(self, name: str) -> None:
+        del self.hooks["name"]
+
     def _emit(self, name: str, **data: Any) -> None:
         for fn in self.hooks.get(name, []):
             fn(**data)

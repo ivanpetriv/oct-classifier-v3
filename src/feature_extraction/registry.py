@@ -5,6 +5,9 @@ from feature_extraction.extractors.cdch_feature_extractor import CdchFeaturesExt
 from feature_extraction.extractors.ldch_feature_extractor import LdchFeaturesExtractor
 from feature_extraction.extractors.hog_feature_extractor import HogFeaturesExtractor
 from feature_extraction.extractors.lbp_feature_extractor import LbpFeaturesExtractor
+from feature_extraction.extractors.rc_ldch_feature_extractor import (
+    RcLdchFeaturesExtractor,
+)
 from feature_extraction.extractors.rdch_feature_extractor import RdchFeaturesExtractor
 
 
@@ -15,10 +18,11 @@ class FeatureExtractorRegistry:
 
     _registry: dict[str, type[BaseFeaturesExtractor]] = {
         "cdch": CdchFeaturesExtractor,
-        "dch": LdchFeaturesExtractor,
+        "ldch": LdchFeaturesExtractor,
         "rdch": RdchFeaturesExtractor,
         "lbp": LbpFeaturesExtractor,
         "hog": HogFeaturesExtractor,
+        "rcldch": RcLdchFeaturesExtractor,
     }
 
     @classmethod
