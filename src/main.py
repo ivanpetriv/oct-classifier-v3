@@ -6,83 +6,103 @@ import sys
 from PIL import Image
 import joblib
 import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report
 
-from classification.registry import ClassifierRegistry
 from config_settings.oct_config import OctConfig
 from dataset.oct_dataset import OctDataset
 from feature_extraction.registry import FeatureExtractorRegistry
-from pipeline.train import Experiment, SklearnTrainer
+from pipeline.pipeline_builder import _get_feature_cache_dir, build_pipeline
 from preprocessing.registry import PreprocessingRegistry
 from visualization.feature_extractor_visualizer import FeatureExtractorVisualizer
+from visualization.train_results_visualizer import TrainResultsVisualizer
 
 
 def launch_training(config: OctConfig):
-    classes = config.dataset.classes
-    dataset = OctDataset(config.paths.normalized_dataset, classes)
+    pipeline = build_pipeline(config, True, True, True, True)
 
-    feature_extractor = FeatureExtractorRegistry.create(
-        config.feature_extractor.active, **vars(config.feature_extractor.params)
-    )
-    classifier = ClassifierRegistry.create(
-        config.classifier.active, **vars(config.classifier.params)
+    # 1. Instantiate dataset shell (no preprocessing pipeline needed yet)
+    dataset = OctDataset(
+        config.paths.original_dataset, config.dataset.classes, preprocessor=None
     )
 
-    steps = [("extractor", feature_extractor)]
+    # 2. Calculate the exact sample limits based on proportions
+    base_samples = config.dataset.samples_per_class
+    train_limit = int(
+        base_samples * (config.dataset.sampling_proportions.train / 100.0)
+    )
+    val_limit = int(base_samples * (config.dataset.sampling_proportions.val / 100.0))
 
-    match config.dimensionality_reduction.active:
-        case "pca":
-            pca = PCA(
-                n_components=config.dimensionality_reduction.params.n_components,
-                whiten=config.dimensionality_reduction.params.whiten,
-                random_state=config.random_seed,
-            )
-            steps.append(("reducer", pca))
-        case "none" | _:
-            pass
+    # 3. ALWAYS load true labels (Instant operation, near-zero memory footprint)
+    y_train = dataset.get_split_labels("train", train_limit)
+    y_val = dataset.get_split_labels("val", val_limit)
 
-    steps.append(("classifier", classifier))
+    # 4. Resolve unique cache signature path
 
-    pipeline = Pipeline(steps)
+    cache_dir_str = _get_feature_cache_dir(config)
 
-    trainer = SklearnTrainer(pipeline)
-    experiment = Experiment(dataset, classes)
+    is_cached = (
+        cache_dir_str is not None
+        and Path(cache_dir_str).exists()
+        and any(Path(cache_dir_str).iterdir())
+    )
 
-    result = experiment.run(trainer, tuner=None)
-    print(f"Macro F1: {result.macro_f1}")
+    # 5. Conditionally handle heavy image loading (X)
+    if is_cached:
+        print(
+            f"[Cache Hit] Loading features from {cache_dir_str}. Bypassing image disk I/O."
+        )
+        # Dummy shapes matching the label lengths.
+        # SafePCA/SVM will receive the cached 128-dim vectors instead of these 1x1 placeholders.
+        X_train = np.zeros((len(y_train), 1, 1), dtype=np.uint8)
+        X_val = np.zeros((len(y_val), 1, 1), dtype=np.uint8)
+    else:
+        print(
+            "[Cache Miss] Cache empty or modified. Loading and preprocessing raw images..."
+        )
+        preprocessing = PreprocessingRegistry.create_pipeline(
+            config.preprocessing_pipeline
+        )
+        dataset.preprocessor = preprocessing  # Inject the active preprocessing pipeline
+
+        # Standard full array collection
+        X_train, _ = dataset.gather_full_split("train", train_limit)
+        X_val, _ = dataset.gather_full_split("val", val_limit)
+
+    # 6. Execute modeling
+    pipeline.fit(X_train, y_train)
+    joblib.dump(pipeline, config.paths.model_output / "model.joblib")
+
+    # 7. Evaluate (Now perfectly accurate and readable on both Cache Hits and Misses!)
+    y_train_pred = pipeline.predict(X_train)
+    print("\nTraining accuracies:")
+    print(classification_report(y_train, y_train_pred, zero_division=0))
+
+    preds = pipeline.predict(X_val)
+    print("Validation accuracies:")
+    print(classification_report(y_val, preds, zero_division=0))
+
+    class_mapping = dataset.class_mapping
+    classes = list(class_mapping.keys())
+    TrainResultsVisualizer.show_confusion_matrix(y_val, preds, classes)
 
 
 def launch_inference(config: OctConfig, image_path: Path, model_path: str):
     try:
-        trained_model = joblib.load(model_path)
+        pipeline = joblib.load(model_path)
     except Exception as e:
         raise RuntimeError(f"Failed to load model from {model_path}: {e}")
 
     try:
         with Image.open(image_path) as img:
+            img = img.convert("L").resize((256, 256))
             image_to_infere = np.array(img)
     except Exception as e:
         raise RuntimeError(f"Failed to load image from {image_path}: {e}")
 
-    preprocessing_pipeline = PreprocessingRegistry.create_pipeline(
-        config.preprocessing_pipeline
-    )
-    feature_extractor = FeatureExtractorRegistry.create(
-        config.feature_extractor.active, **vars(config.feature_extractor.params)
-    )
+    prediction_idx = pipeline.predict([image_to_infere])[0]
 
-    preprocessed_image = preprocessing_pipeline.execute(image_to_infere)
-    image_features = feature_extractor.extract(preprocessed_image)
+    predicted_class = config.dataset.classes[int(prediction_idx)]
 
-    features_2d = image_features.reshape(1, -1)
-
-    prediction_idx = trained_model.predict(features_2d)[0]
-
-    classes = config.dataset.classes
-    predicted_class = classes[int(prediction_idx)]
-
-    print("\n--- Inference Result ---")
     print(f"Predicted Class: {predicted_class}")
 
 

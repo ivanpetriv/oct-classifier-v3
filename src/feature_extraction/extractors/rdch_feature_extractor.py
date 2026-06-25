@@ -29,9 +29,7 @@ class RdchFeaturesExtractor(BaseFeaturesExtractor):
         """
         self.ring_step = ring_step
 
-        # Split center tuple into separate args for the FFI
-        self.center_x = center[0] if center is not None else None
-        self.center_y = center[1] if center is not None else None
+        self.center = center
 
         self.pixel_range = pixel_range
         self.bins = bins
@@ -40,11 +38,13 @@ class RdchFeaturesExtractor(BaseFeaturesExtractor):
         """
         Extracts the RDCH features using parallelized Rust processing.
         """
+        clean_image = np.ascontiguousarray(image, dtype=np.uint8)
+
         return oct_rust.extract_rdch(
-            image,
+            clean_image,
             self.ring_step,
-            self.center_x,
-            self.center_y,
+            self.center[0] if self.center is not None else None,
+            self.center[1] if self.center is not None else None,
             self.pixel_range[0],
             self.pixel_range[1],
             self.bins,

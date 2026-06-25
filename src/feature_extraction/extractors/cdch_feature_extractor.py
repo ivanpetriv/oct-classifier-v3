@@ -25,9 +25,8 @@ class CdchFeaturesExtractor(BaseFeaturesExtractor):
             bins: Number of bins for the histogram.
         """
         self.angle_step = angle_step
-        
-        self.center_x = center[0] if center else None
-        self.center_y = center[1] if center else None
+
+        self.center = center
         
         self.pixel_range = pixel_range
         self.bins = bins
@@ -36,12 +35,14 @@ class CdchFeaturesExtractor(BaseFeaturesExtractor):
         """
         Extracts the CDCH features using parallelized Rust processing.
         """
+        clean_image = np.ascontiguousarray(image, dtype=np.uint8)
+
         return oct_rust.extract_cdch(
-            image,
+            clean_image,
             self.angle_step,
-            self.center_x,
-            self.center_y,
+            self.center[0] if self.center is not None else None,
+            self.center[1] if self.center is not None else None,
             self.pixel_range[0],
             self.pixel_range[1],
-            self.bins
+            self.bins,
         )

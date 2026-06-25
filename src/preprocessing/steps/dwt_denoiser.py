@@ -50,6 +50,4 @@ class DwtDenoiser(PreprocessingStep):
             channel_axis=self.channel_axis,
         )
 
-        print(np.abs(img_float - clean_float))
-
         return np.clip(clean_float * 255.0, 0, 255).astype(np.uint8)

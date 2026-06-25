@@ -2,6 +2,10 @@
 *.iws
 out/
 
+.*/
+artifacts/
+models/
+
 # Rust
 rust/target/
 

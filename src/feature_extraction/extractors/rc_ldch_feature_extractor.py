@@ -36,8 +36,9 @@ class RcLdchFeaturesExtractor(BaseFeaturesExtractor):
         Extracts the cumulative directional histogram from the given image.
 
         :param image: Image to extract features from.
-        :return: A 2D numpy array containing normalized cumulative histograms for each section.
+        :return: A 2D numpy array containing normaSlized cumulative histograms for each section.
         """
+        image = np.ascontiguousarray(image, dtype=np.uint8)
         row_ldch = oct_rust.extract_ldch(
             image,
             self.sections,

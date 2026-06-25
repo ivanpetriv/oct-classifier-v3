@@ -18,7 +18,7 @@ class PreprocessingPipeline:
         self.hooks.setdefault(name, []).append(func)
 
     def remove_hook(self, name: str) -> None:
-        del self.hooks["name"]
+        self.hooks.pop(name, None)
 
     def _emit(self, name: str, **data: Any) -> None:
         for fn in self.hooks.get(name, []):

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import time
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -20,9 +21,12 @@ class BaseFeaturesExtractor(ABC, BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X: np.ndarray) -> np.ndarray:
-        features = []
+        all_features = []
 
+        start_time = time.perf_counter()
         for image in X:
-            feat = self.extract(image)
-            features.append(feat)
-        return np.array(features)
+            image_features = self.extract(image)
+            all_features.append(image_features.ravel())
+        end_time = time.perf_counter()
+        print(f"Processed {len(all_features)} images in {(end_time - start_time):.3f}s")
+        return np.array(all_features)

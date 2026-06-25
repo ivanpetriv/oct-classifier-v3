@@ -1,5 +1,5 @@
 from typing import Any
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -15,6 +15,7 @@ class ClassifierRegistry:
 
     _registry: dict[str, type[Any]] = {
         "svm": SVC,
+        "svm_linear": LinearSVC,
         "random_forest": RandomForestClassifier,
         "knn": KNeighborsClassifier,
     }
@@ -22,11 +23,21 @@ class ClassifierRegistry:
     @classmethod
     def create(cls, name: str, **kwargs: Any) -> Any:
         """
-        Returns a feature extractor object based on its name as a string.
+        Returns a classifier object based on its name as a string.
         :param name: Name of the classifier.
         :param kwargs: Arguments that the classifier accepts in its constructor.
-        :return: Feature extractor object.
+        :return: Classifier object.
         """
+        name = name.lower()
+
+        if name == "svm" and kwargs.get("kernel") == "linear":
+            name = "svm_linear"
+            kwargs.pop("kernel", None)
+            kwargs.pop("gamma", None)
+            kwargs.pop("degree", None)
+            kwargs.pop("shrinking", None)
+            kwargs.pop("probability", None)
+
         model_class = cls._registry.get(name.lower())
 
         if not model_class:

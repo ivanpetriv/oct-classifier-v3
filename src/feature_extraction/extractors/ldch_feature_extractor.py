@@ -44,8 +44,9 @@ class LdchFeaturesExtractor(BaseFeaturesExtractor):
         :param image: Image to extract features from.
         :return: A 2D numpy array containing normalized cumulative histograms for each section.
         """
+        clean_image = np.ascontiguousarray(image, dtype=np.uint8)
         return oct_rust.extract_ldch(
-            image,
+            clean_image,
             self.sections,
             self.layout == "row",
             self.pixel_range[0],
