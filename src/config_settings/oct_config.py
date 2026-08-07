@@ -1,9 +1,8 @@
-from typing import Literal, Any, Annotated, Union
 from pathlib import Path
+from typing import Annotated, Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, ConfigDict
-
+from pydantic import BaseModel, ConfigDict, Field
 
 # ============================================================
 # Global / Dataset
@@ -142,14 +141,7 @@ class RCLDCHConfig(BaseModel):
 
 
 FeatureExtractorConfig = Annotated[
-    Union[
-        HOGConfig,
-        LBPConfig,
-        CDCHConfig,
-        LDCHConfig,
-        RDCHConfig,
-        RCLDCHConfig,
-    ],
+    HOGConfig | LBPConfig | CDCHConfig | LDCHConfig | RDCHConfig | RCLDCHConfig,
     Field(discriminator="active"),
 ]
 
@@ -196,10 +188,7 @@ class NoneReducerConfig(BaseModel):
 
 
 ReducerConfig = Annotated[
-    Union[
-        PCAConfig,
-        NoneReducerConfig,
-    ],
+    PCAConfig | NoneReducerConfig,
     Field(discriminator="active"),
 ]
 
@@ -232,9 +221,7 @@ class SVMConfig(BaseModel):
         class_weight: str | None
 
     active: Literal["svm"]
-    params: Union[LinearParams, RbfParams, PolyParams] = Field(
-        ..., discriminator="kernel"
-    )
+    params: LinearParams | RbfParams | PolyParams = Field(..., discriminator="kernel")
 
 
 class RandomForestConfig(BaseModel):
@@ -313,11 +300,7 @@ class KNNConfig(BaseModel):
 
 
 ClassifierConfig = Annotated[
-    Union[
-        SVMConfig,
-        RandomForestConfig,
-        KNNConfig,
-    ],
+    SVMConfig | RandomForestConfig | KNNConfig,
     Field(discriminator="active"),
 ]
 

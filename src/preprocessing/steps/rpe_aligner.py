@@ -8,8 +8,8 @@ from preprocessing.preprocessing_step import PreprocessingStep
 class RpeAligner(PreprocessingStep):
     def __init__(
         self,
-        blur_sigma: int = 3,  # Lowered to a practical default
-        poly_degree: int = 3,  # Lowered to prevent edge oscillation
+        blur_sigma: int = 3,
+        poly_degree: int = 5,
         target_row: int | None = None,
         max_jump: int = 5,
     ):

@@ -29,6 +29,7 @@ dependencies = [
     # Tests
     "pytest",
     "pytest-benchmark",
+    "psutil>=5.9.0",
 ]
 
 [project.scripts]

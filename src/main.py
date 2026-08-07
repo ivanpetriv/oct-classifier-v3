@@ -1,11 +1,16 @@
 import argparse
 import json
-from pathlib import Path
+import os
 import sys
+import time
+import tracemalloc
+from functools import wraps
+from pathlib import Path
 
-from PIL import Image
 import joblib
 import numpy as np
+import psutil
+from PIL import Image
 from sklearn.metrics import classification_report
 
 from config_settings.oct_config import OctConfig
@@ -16,27 +21,25 @@ from preprocessing.registry import PreprocessingRegistry
 from visualization.feature_extractor_visualizer import FeatureExtractorVisualizer
 from visualization.train_results_visualizer import TrainResultsVisualizer
 
+# TODO: Differentiate drusen and normal
+# TODO: Make "something else" class
+
 
 def launch_training(config: OctConfig):
     pipeline = build_pipeline(config, True, True, True, True)
 
-    # 1. Instantiate dataset shell (no preprocessing pipeline needed yet)
     dataset = OctDataset(
         config.paths.original_dataset, config.dataset.classes, preprocessor=None
     )
 
-    # 2. Calculate the exact sample limits based on proportions
     base_samples = config.dataset.samples_per_class
     train_limit = int(
         base_samples * (config.dataset.sampling_proportions.train / 100.0)
     )
     val_limit = int(base_samples * (config.dataset.sampling_proportions.val / 100.0))
 
-    # 3. ALWAYS load true labels (Instant operation, near-zero memory footprint)
     y_train = dataset.get_split_labels("train", train_limit)
     y_val = dataset.get_split_labels("val", val_limit)
-
-    # 4. Resolve unique cache signature path
 
     cache_dir_str = _get_feature_cache_dir(config)
 
@@ -46,33 +49,27 @@ def launch_training(config: OctConfig):
         and any(Path(cache_dir_str).iterdir())
     )
 
-    # 5. Conditionally handle heavy image loading (X)
+    preprocessing = PreprocessingRegistry.create_pipeline(config.preprocessing_pipeline)
+    dataset.preprocessor = preprocessing
+
     if is_cached:
         print(
             f"[Cache Hit] Loading features from {cache_dir_str}. Bypassing image disk I/O."
         )
         # Dummy shapes matching the label lengths.
-        # SafePCA/SVM will receive the cached 128-dim vectors instead of these 1x1 placeholders.
         X_train = np.zeros((len(y_train), 1, 1), dtype=np.uint8)
         X_val = np.zeros((len(y_val), 1, 1), dtype=np.uint8)
     else:
         print(
             "[Cache Miss] Cache empty or modified. Loading and preprocessing raw images..."
         )
-        preprocessing = PreprocessingRegistry.create_pipeline(
-            config.preprocessing_pipeline
-        )
-        dataset.preprocessor = preprocessing  # Inject the active preprocessing pipeline
 
-        # Standard full array collection
         X_train, _ = dataset.gather_full_split("train", train_limit)
         X_val, _ = dataset.gather_full_split("val", val_limit)
 
-    # 6. Execute modeling
     pipeline.fit(X_train, y_train)
     joblib.dump(pipeline, config.paths.model_output / "model.joblib")
 
-    # 7. Evaluate (Now perfectly accurate and readable on both Cache Hits and Misses!)
     y_train_pred = pipeline.predict(X_train)
     print("\nTraining accuracies:")
     print(classification_report(y_train, y_train_pred, zero_division=0))

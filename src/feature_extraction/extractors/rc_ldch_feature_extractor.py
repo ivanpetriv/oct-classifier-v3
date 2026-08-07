@@ -12,7 +12,7 @@ class RcLdchFeaturesExtractor(BaseFeaturesExtractor):
         bins: int,
     ):
         """
-        Initializes the LDCH converter.
+        Initializes the LDCH converter that extracts features in rows and columns (RC).
 
         :param sections: Number of sections to divide the image into.
         :param pixel_range: Tuple specifying the range of pixel values to consider (min, max).
@@ -33,10 +33,10 @@ class RcLdchFeaturesExtractor(BaseFeaturesExtractor):
 
     def extract(self, image: np.ndarray) -> np.ndarray:
         """
-        Extracts the cumulative directional histogram from the given image.
+        Extracts the histogram from the given image.
 
         :param image: Image to extract features from.
-        :return: A 2D numpy array containing normaSlized cumulative histograms for each section.
+        :return: A 2D numpy array containing cumulative histograms for each section.
         """
         image = np.ascontiguousarray(image, dtype=np.uint8)
         row_ldch = oct_rust.extract_ldch(

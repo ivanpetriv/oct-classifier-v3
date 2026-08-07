@@ -10,7 +10,7 @@ paths:
 
 dataset:
   classes: [ "NORMAL", "CNV", "DRUSEN", "DME" ]
-  samples_per_class: 3000
+  samples_per_class: 500
   sampling_proportions:
     train: 80
     val: 10
@@ -24,6 +24,9 @@ preprocessing_pipeline:
       mode: "hard"
       wavelet_levels: 3
   - rpe_aligner: {}
+  - clahe_filter:
+      clip_limit: 10
+      tile_grid_size: [8, 8]
   - resizer:
       target_size: [256, 256]
 
@@ -58,7 +61,7 @@ classifier:
   active: "svm"
   params:
     kernel: "rbf"
-    C: 0.1
+    C: 1
     gamma: "scale"
     probability: false
     shrinking: true

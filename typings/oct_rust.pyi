@@ -12,7 +12,6 @@ def extract_ldch(
     """
     Extracts the cumulative directional histogram using PyO3 and Rust Rayon.
     """
-    ...
 
 def extract_cdch(
     image: np.ndarray,
@@ -27,7 +26,6 @@ def extract_cdch(
     Extracts Circular Distributed Cumulative Histograms using Rust Rayon.
     Calculates rays radially and automatically applies a 90-degree counter-clockwise rotation.
     """
-    ...
 
 def extract_rdch(
     image: np.ndarray,
@@ -42,4 +40,3 @@ def extract_rdch(
     Extracts Ring Distributed Cumulative Histograms using Rust Rayon.
     Dynamically calculates the number of rings based on ring_step and image bounds.
     """
-    ...

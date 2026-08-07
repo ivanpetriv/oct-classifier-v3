@@ -101,4 +101,4 @@ def build_pipeline(
 
     pipeline_memory = _get_feature_cache_dir(config) if feature_extracting else None
 
-    return Pipeline(pipeline, memory=pipeline_memory)
+    return Pipeline(pipeline, memory=None)

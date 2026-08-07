@@ -1,15 +1,15 @@
 import concurrent.futures
 from pathlib import Path
-from typing import Literal, Generator
+from typing import Generator, Literal
+
 import numpy as np
 from PIL import Image
-
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
     TimeRemainingColumn,
 )
 

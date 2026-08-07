@@ -1,10 +1,12 @@
 import gc
 import os
-from pathlib import Path
 import time
 import warnings
+from pathlib import Path
 
 import yaml
+
+from log.resource_tracker import track_trial_resources
 
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
@@ -13,7 +15,7 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 import copy
 
 import optuna
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import f1_score
 
 from config_settings.oct_config import OctConfig
 from dataset.oct_dataset import OctDataset
@@ -39,7 +41,7 @@ class OptunaTuner:
         self.X_train, self.y_train = self.dataset.gather_full_split("train", 1000)
         self.X_val, self.y_val = self.dataset.gather_full_split("val", 1000)
 
-    def objective(self, trial: optuna.Trial) -> tuple[float, float, float]:
+    def objective(self, trial: optuna.Trial) -> tuple[float, float, float, float]:
         config_dict = copy.deepcopy(self.base_config_dict)
 
         # --- TUNE EXTRACTOR ---
@@ -71,26 +73,26 @@ class OptunaTuner:
 
         pipeline = build_pipeline(config, True, True, True, True)
 
-        pipeline.fit(self.X_train, self.y_train)
+        with track_trial_resources() as train_res:
+            pipeline.fit(self.X_train, self.y_train)
 
         train_preds = pipeline.predict(self.X_train)
 
-        start_time = time.perf_counter()
-        val_preds = pipeline.predict(self.X_val)
-        finish_time = time.perf_counter()
+        with track_trial_resources() as inf_res:
+            val_preds = pipeline.predict(self.X_val)
 
         train_score = f1_score(self.y_train, train_preds, average="macro")
         val_score = f1_score(self.y_val, val_preds, average="macro")
         overfit_gap = max(0, train_score - val_score)
 
-        del pipeline
-        del config
-        del config_dict
-        del train_preds
-        del val_preds
+        inference_time = inf_res["time"]
+
+        peak_memory = inf_res["peak_mem_mb"]
+
+        del pipeline, config, config_dict, train_preds, val_preds
         gc.collect()
 
-        return val_score, overfit_gap, finish_time - start_time
+        return val_score, overfit_gap, inference_time, peak_memory
 
 
 def main():
@@ -98,7 +100,7 @@ def main():
         storage="postgresql://postgres:34015221205343361642@localhost:5432/thesis-optuna",
         study_name="oct_tuning_all_v15",
         load_if_exists=True,
-        directions=["maximize", "minimize", "minimize"],
+        directions=["maximize", "minimize", "minimize", "minimize"],
         pruner=optuna.pruners.MedianPruner(),
     )
 
@@ -113,17 +115,13 @@ def main():
         f"Found {len(pareto_front)} optimal parameter configurations on the Pareto front:\n"
     )
 
-    # 2. Loop through them and print their specific metrics and parameters
     for i, trial in enumerate(pareto_front):
         print(f"--- Option {i + 1} (Trial #{trial.number}) ---")
-
-        # trial.values contains the tuple of metrics you returned in the objective function
-        print(f"  Validation F1: {trial.values[0]:.4f}")
-        print(f"  Overfit Gap:   {trial.values[1]:.4f}")
-        print(f"  Train Time:    {trial.values[2]:.2f}s")
-
-        # trial.params contains the dictionary of hyperparameters used
-        print(f"  Parameters:    {trial.params}\n")
+        print(f"  Validation F1:    {trial.values[0]:.4f}")
+        print(f"  Overfit Gap:      {trial.values[1]:.4f}")
+        print(f"  Inference Time:   {trial.values[2]:.4f}s")
+        print(f"  Peak Memory:      {trial.values[3]:.2f} MB")
+        print(f"  Parameters:       {trial.params}\n")
 
 
 if __name__ == "__main__":

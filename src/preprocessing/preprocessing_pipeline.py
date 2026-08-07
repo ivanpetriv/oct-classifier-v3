@@ -1,7 +1,9 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
+from log.resource_tracker import track_step_resources
 from preprocessing.preprocessing_step import PreprocessingStep
 
 
@@ -33,7 +35,10 @@ class PreprocessingPipeline:
         """
 
         for i, step in enumerate(self.steps):
-            image_array = step.preprocess(image_array)
+            with track_step_resources(
+                f"Preprocessing Step {i}: {step.__class__.__name__}"
+            ):
+                image_array = step.preprocess(image_array)
 
             self._emit("after_step", step=step, index=i, image=image_array)
 
