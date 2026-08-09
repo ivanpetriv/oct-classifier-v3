@@ -2,14 +2,19 @@
 random_seed: 42
 
 paths:
-  normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/T\
-    hesis/Ravelli-normalized-v2/"
-  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli"
+  normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli/"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/OCTDL"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/train/"
+  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/C8/train/"
   cache: "cache"
   model_output: "models"
 
 dataset:
   classes: [ "NORMAL", "CNV", "DRUSEN", "DME" ]
+  # classes: [ "NORMAL", "CNV", "DRUSEN", "DME", "AMD", "CSR", "DR", "MH" ]
+  # classes: ["NO", "AMD", "DME", "ERM", "RAO", "RVO", "VID"]
+  # classes: ["NO", "AMD", "DME", "ERM"]
   samples_per_class: 500
   sampling_proportions:
     train: 80
@@ -19,11 +24,11 @@ dataset:
 preprocessing_pipeline:
   - corner_artifact_remover:
       min_threshold: 250
+  - rpe_aligner: {}
   - dwt_denoiser:
       wavelet: "coif3"
       mode: "hard"
       wavelet_levels: 3
-  - rpe_aligner: {}
   - clahe_filter:
       clip_limit: 10
       tile_grid_size: [8, 8]
@@ -34,9 +39,14 @@ feature_extractor:
   active: "rcldch"
   params:
     sections: 128
-    # layout: "row"
     pixel_range: [ 12, 254 ]
     bins: 128
+  # active: "ldch"
+  # params:
+  #   sections: 128
+  #   layout: "row"
+  #   pixel_range: [ 12, 254 ]
+  #   bins: 128
   # active: "lbp"
   # params:
   #   n_points: 8             # Number of circularly symmetric neighbor set points
