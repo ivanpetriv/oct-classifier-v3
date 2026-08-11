@@ -8,6 +8,7 @@ from preprocessing.steps.corner_artifact_remover import CornerArtifactRemover
 from preprocessing.steps.dwt_denoiser import DwtDenoiser
 from preprocessing.steps.resizer import Resizer
 from preprocessing.steps.rpe_aligner import RpeAligner
+from preprocessing.steps.rpe_roi_extractor import RpeRoiExtractor
 
 
 class PreprocessingRegistry:
@@ -17,6 +18,7 @@ class PreprocessingRegistry:
         "clahe_filter": ClaheFilter,
         "corner_artifact_remover": CornerArtifactRemover,
         "rpe_aligner": RpeAligner,
+        "rpe_roi_aligner": RpeRoiExtractor,
         "resizer": Resizer,
     }
 

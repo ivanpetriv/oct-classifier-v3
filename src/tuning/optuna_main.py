@@ -70,8 +70,8 @@ def run_full_tuning():
 
     study.optimize(
         tuner.objective,
-        n_trials=150,
-        n_jobs=6,
+        n_trials=1,
+        n_jobs=3,
         show_progress_bar=True,
     )
 

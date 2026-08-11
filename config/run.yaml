@@ -3,9 +3,9 @@ random_seed: 42
 
 paths:
   normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/"
-  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli/train"
+  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli/train"
   # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/OCTDL"
-  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/train"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/train"
   # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/C8/train/"
   cache: "cache"
   model_output: "models"
@@ -23,8 +23,13 @@ dataset:
 
 preprocessing_pipeline:
   - corner_artifact_remover:
-      min_threshold: 250
+      min_threshold: 230
   - rpe_aligner: {}
+  # - rpe_roi_aligner:
+  #     roi_above: 80
+  #     roi_below: 40
+  #     blur_sigma: 3
+  #     max_jump: 5
   - dwt_denoiser:
       wavelet: "coif3"
       mode: "hard"
@@ -37,9 +42,9 @@ preprocessing_pipeline:
 
 feature_extractor:
   - rcldch:
-      sections: 128
-      pixel_range: [ 12, 254 ]
-      bins: 256
+      sections: 64
+      pixel_range: [ 29, 234 ]
+      bins: 192
   # active: "ldch"
   # params:
   #   sections: 32
@@ -61,7 +66,7 @@ feature_extractor:
 dimensionality_reduction:
   active: "pca"
   params:
-    n_components: 150
+    n_components: 104
     whiten: true
     svd_solver: "randomized"
     random_state: 42
@@ -71,8 +76,8 @@ classifier:
   active: "svm"
   params:
     kernel: "rbf"   
-    C: 1.0 
-    gamma: 0.001
+    C: 13.5
+    gamma: 0.0043
     class_weight: "balanced"
     probability: true
     shrinking: true
