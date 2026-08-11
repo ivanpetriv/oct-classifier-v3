@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import time
+
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -10,6 +10,7 @@ class BaseFeaturesExtractor(ABC, BaseEstimator, TransformerMixin):
     """
     Base class for extracting features from an image.
     """
+
     @abstractmethod
     def extract(self, image: np.ndarray) -> np.ndarray:
         """
@@ -28,12 +29,7 @@ class BaseFeaturesExtractor(ABC, BaseEstimator, TransformerMixin):
 
         with track_step_resources(f"Feature Extraction Batch ({extractor_name})"):
             for i, image in enumerate(X):
-                # If you absolutely must track per-image time, do it without psutil here:
-                # t0 = time.perf_counter()
-
                 image_features = self.extract(image)
                 all_features.append(image_features.ravel())
 
-                # t1 = time.perf_counter()
-                # print(f"[{extractor_name} Image {i}] Time: {t1-t0:.4f}s")
         return np.array(all_features)

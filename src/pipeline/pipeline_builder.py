@@ -2,14 +2,14 @@ import hashlib
 import json
 from pathlib import Path
 
+from sklearn.base import BaseEstimator
 from sklearn.decomposition import PCA
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from classification.registry import ClassifierRegistry
 from config_settings.oct_config import OctConfig
 from feature_extraction.registry import FeatureExtractorRegistry
-from sklearn.base import BaseEstimator
 
 
 def _get_feature_cache_dir(config: OctConfig) -> str | None:
@@ -21,18 +21,18 @@ def _get_feature_cache_dir(config: OctConfig) -> str | None:
         return None
 
     extractor_info = {
-        "active": config.feature_extractor.active,
-        "params": vars(config.feature_extractor.params),
+        "feature_extractors": config.feature_extractor,
         "preprocessing": config.preprocessing_pipeline,
     }
-    config_hash = hashlib.md5(
-        json.dumps(extractor_info, sort_keys=True).encode()
-    ).hexdigest()
 
-    cache_path = (
-        Path(config.paths.cache)
-        / f"pipeline_step_{config.feature_extractor.active}_{config_hash}"
+    config_json = json.dumps(
+        config.model_dump(include={"feature_extractor", "preprocessing_pipeline"}),
+        sort_keys=True,
+        default=str,
     )
+    config_hash = hashlib.md5(config_json.encode()).hexdigest()
+
+    cache_path = Path(config.paths.cache) / f"pipeline_cache_{config_hash}"
     return str(cache_path)
 
 
@@ -64,11 +64,31 @@ def build_pipeline(
     pipeline: list[tuple[str, BaseEstimator]] = []
 
     if feature_extracting and config.feature_extractor:
-        feature_extractor_params = vars(config.feature_extractor.params)
-        feature_extractor = FeatureExtractorRegistry.create(
-            config.feature_extractor.active, **feature_extractor_params
-        )
-        pipeline.append(("feature_extractor", feature_extractor))
+        extracted_features = []
+
+        for item in config.feature_extractor:
+            if isinstance(item, dict):
+                extractor_name, extractor_params = next(iter(item.items()))
+            else:
+                extractor_name = item.active
+                params_obj = item.params
+                extractor_params = (
+                    params_obj.model_dump(exclude_none=True)
+                    if hasattr(params_obj, "model_dump")
+                    else vars(params_obj)
+                )
+
+            extractor_instance = FeatureExtractorRegistry.create(
+                extractor_name, **extractor_params
+            )
+            extracted_features.append(
+                (f"extractor_{extractor_name}", extractor_instance)
+            )
+
+        if len(extracted_features) == 1:
+            pipeline.append(extracted_features[0])
+        else:
+            pipeline.append(("feature_extractor", FeatureUnion(extracted_features)))
 
     pipeline.append(("scaler", StandardScaler()))
 

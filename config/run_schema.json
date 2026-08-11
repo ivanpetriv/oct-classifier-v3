@@ -18,24 +18,6 @@
             "title": "CDCHConfig",
             "type": "object"
         },
-        "DCHConfig": {
-            "properties": {
-                "active": {
-                    "const": "dch",
-                    "title": "Active",
-                    "type": "string"
-                },
-                "params": {
-                    "$ref": "#/$defs/config_settings__oct_config__DCHConfig__Params"
-                }
-            },
-            "required": [
-                "active",
-                "params"
-            ],
-            "title": "DCHConfig",
-            "type": "object"
-        },
         "Dataset": {
             "properties": {
                 "classes": {
@@ -116,6 +98,60 @@
             "title": "LBPConfig",
             "type": "object"
         },
+        "LDCHConfig": {
+            "properties": {
+                "active": {
+                    "const": "ldch",
+                    "title": "Active",
+                    "type": "string"
+                },
+                "params": {
+                    "$ref": "#/$defs/config_settings__oct_config__LDCHConfig__Params"
+                }
+            },
+            "required": [
+                "active",
+                "params"
+            ],
+            "title": "LDCHConfig",
+            "type": "object"
+        },
+        "LinearParams": {
+            "properties": {
+                "kernel": {
+                    "const": "linear",
+                    "title": "Kernel",
+                    "type": "string"
+                },
+                "C": {
+                    "title": "C",
+                    "type": "number"
+                },
+                "shrinking": {
+                    "title": "Shrinking",
+                    "type": "boolean"
+                },
+                "class_weight": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "title": "Class Weight"
+                }
+            },
+            "required": [
+                "kernel",
+                "C",
+                "shrinking",
+                "class_weight"
+            ],
+            "title": "LinearParams",
+            "type": "object"
+        },
         "NoneReducerConfig": {
             "properties": {
                 "active": {
@@ -185,6 +221,59 @@
             "title": "Paths",
             "type": "object"
         },
+        "PolyParams": {
+            "properties": {
+                "kernel": {
+                    "const": "poly",
+                    "title": "Kernel",
+                    "type": "string"
+                },
+                "C": {
+                    "title": "C",
+                    "type": "number"
+                },
+                "gamma": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "title": "Gamma"
+                },
+                "degree": {
+                    "title": "Degree",
+                    "type": "integer"
+                },
+                "shrinking": {
+                    "title": "Shrinking",
+                    "type": "boolean"
+                },
+                "class_weight": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "title": "Class Weight"
+                }
+            },
+            "required": [
+                "kernel",
+                "C",
+                "gamma",
+                "degree",
+                "shrinking",
+                "class_weight"
+            ],
+            "title": "PolyParams",
+            "type": "object"
+        },
         "RCLDCHConfig": {
             "properties": {
                 "active": {
@@ -239,6 +328,54 @@
             "title": "RandomForestConfig",
             "type": "object"
         },
+        "RbfParams": {
+            "properties": {
+                "kernel": {
+                    "const": "rbf",
+                    "title": "Kernel",
+                    "type": "string"
+                },
+                "C": {
+                    "title": "C",
+                    "type": "number"
+                },
+                "gamma": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "title": "Gamma"
+                },
+                "shrinking": {
+                    "title": "Shrinking",
+                    "type": "boolean"
+                },
+                "class_weight": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "title": "Class Weight"
+                }
+            },
+            "required": [
+                "kernel",
+                "C",
+                "gamma",
+                "shrinking",
+                "class_weight"
+            ],
+            "title": "RbfParams",
+            "type": "object"
+        },
         "SVMConfig": {
             "properties": {
                 "active": {
@@ -247,7 +384,26 @@
                     "type": "string"
                 },
                 "params": {
-                    "$ref": "#/$defs/config_settings__oct_config__SVMConfig__Params"
+                    "discriminator": {
+                        "mapping": {
+                            "linear": "#/$defs/LinearParams",
+                            "poly": "#/$defs/PolyParams",
+                            "rbf": "#/$defs/RbfParams"
+                        },
+                        "propertyName": "kernel"
+                    },
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/LinearParams"
+                        },
+                        {
+                            "$ref": "#/$defs/RbfParams"
+                        },
+                        {
+                            "$ref": "#/$defs/PolyParams"
+                        }
+                    ],
+                    "title": "Params"
                 }
             },
             "required": [
@@ -326,48 +482,6 @@
                 "center",
                 "pixel_range",
                 "angle_step",
-                "bins"
-            ],
-            "title": "Params",
-            "type": "object"
-        },
-        "config_settings__oct_config__DCHConfig__Params": {
-            "properties": {
-                "sections": {
-                    "title": "Sections",
-                    "type": "integer"
-                },
-                "layout": {
-                    "enum": [
-                        "row",
-                        "col"
-                    ],
-                    "title": "Layout",
-                    "type": "string"
-                },
-                "pixel_range": {
-                    "maxItems": 2,
-                    "minItems": 2,
-                    "prefixItems": [
-                        {
-                            "type": "integer"
-                        },
-                        {
-                            "type": "integer"
-                        }
-                    ],
-                    "title": "Pixel Range",
-                    "type": "array"
-                },
-                "bins": {
-                    "title": "Bins",
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "sections",
-                "layout",
-                "pixel_range",
                 "bins"
             ],
             "title": "Params",
@@ -506,19 +620,66 @@
                     "type": "string"
                 },
                 "norm": {
-                    "default": "l2",
                     "enum": [
                         "l1",
                         "l2"
                     ],
                     "title": "Norm",
                     "type": "string"
+                },
+                "padding_threshold": {
+                    "title": "Padding Threshold",
+                    "type": "integer"
                 }
             },
             "required": [
                 "n_points",
                 "radius",
-                "method"
+                "method",
+                "norm",
+                "padding_threshold"
+            ],
+            "title": "Params",
+            "type": "object"
+        },
+        "config_settings__oct_config__LDCHConfig__Params": {
+            "properties": {
+                "sections": {
+                    "title": "Sections",
+                    "type": "integer"
+                },
+                "layout": {
+                    "enum": [
+                        "row",
+                        "col"
+                    ],
+                    "title": "Layout",
+                    "type": "string"
+                },
+                "pixel_range": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Pixel Range",
+                    "type": "array"
+                },
+                "bins": {
+                    "title": "Bins",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "sections",
+                "layout",
+                "pixel_range",
+                "bins"
             ],
             "title": "Params",
             "type": "object"
@@ -624,8 +785,8 @@
         },
         "config_settings__oct_config__RDCHConfig__Params": {
             "properties": {
-                "rings": {
-                    "title": "Rings",
+                "ring_step": {
+                    "title": "Ring Step",
                     "type": "integer"
                 },
                 "center": {
@@ -662,7 +823,7 @@
                 }
             },
             "required": [
-                "rings",
+                "ring_step",
                 "center",
                 "pixel_range",
                 "bins"
@@ -787,81 +948,6 @@
             ],
             "title": "Params",
             "type": "object"
-        },
-        "config_settings__oct_config__SVMConfig__Params": {
-            "properties": {
-                "kernel": {
-                    "enum": [
-                        "linear",
-                        "poly",
-                        "rbf",
-                        "sigmoid"
-                    ],
-                    "title": "Kernel",
-                    "type": "string"
-                },
-                "C": {
-                    "title": "C",
-                    "type": "number"
-                },
-                "gamma": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "number"
-                        }
-                    ],
-                    "title": "Gamma"
-                },
-                "degree": {
-                    "default": 3,
-                    "title": "Degree",
-                    "type": "integer"
-                },
-                "shrinking": {
-                    "default": true,
-                    "title": "Shrinking",
-                    "type": "boolean"
-                },
-                "probability": {
-                    "default": false,
-                    "title": "Probability",
-                    "type": "boolean"
-                },
-                "class_weight": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Class Weight"
-                },
-                "random_state": {
-                    "anyOf": [
-                        {
-                            "type": "integer"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Random State"
-                }
-            },
-            "required": [
-                "kernel",
-                "C",
-                "gamma"
-            ],
-            "title": "Params",
-            "type": "object"
         }
     },
     "additionalProperties": false,
@@ -888,35 +974,52 @@
             "type": "array"
         },
         "feature_extractor": {
-            "discriminator": {
-                "mapping": {
-                    "cdch": "#/$defs/CDCHConfig",
-                    "dch": "#/$defs/DCHConfig",
-                    "hog": "#/$defs/HOGConfig",
-                    "lbp": "#/$defs/LBPConfig",
-                    "rcldch": "#/$defs/RCLDCHConfig",
-                    "rdch": "#/$defs/RDCHConfig"
-                },
-                "propertyName": "active"
-            },
-            "oneOf": [
+            "anyOf": [
                 {
-                    "$ref": "#/$defs/HOGConfig"
+                    "items": {
+                        "additionalProperties": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
                 },
                 {
-                    "$ref": "#/$defs/LBPConfig"
-                },
-                {
-                    "$ref": "#/$defs/CDCHConfig"
-                },
-                {
-                    "$ref": "#/$defs/DCHConfig"
-                },
-                {
-                    "$ref": "#/$defs/RDCHConfig"
-                },
-                {
-                    "$ref": "#/$defs/RCLDCHConfig"
+                    "items": {
+                        "discriminator": {
+                            "mapping": {
+                                "cdch": "#/$defs/CDCHConfig",
+                                "hog": "#/$defs/HOGConfig",
+                                "lbp": "#/$defs/LBPConfig",
+                                "ldch": "#/$defs/LDCHConfig",
+                                "rcldch": "#/$defs/RCLDCHConfig",
+                                "rdch": "#/$defs/RDCHConfig"
+                            },
+                            "propertyName": "active"
+                        },
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/HOGConfig"
+                            },
+                            {
+                                "$ref": "#/$defs/LBPConfig"
+                            },
+                            {
+                                "$ref": "#/$defs/CDCHConfig"
+                            },
+                            {
+                                "$ref": "#/$defs/LDCHConfig"
+                            },
+                            {
+                                "$ref": "#/$defs/RDCHConfig"
+                            },
+                            {
+                                "$ref": "#/$defs/RCLDCHConfig"
+                            }
+                        ]
+                    },
+                    "type": "array"
                 }
             ],
             "title": "Feature Extractor"

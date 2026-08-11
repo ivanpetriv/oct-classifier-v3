@@ -23,7 +23,7 @@ def track_step_resources(step_name: str):
     elapsed_time = end_time - start_time
     mem_delta = end_mem - start_mem
 
-    print(f"[{step_name}] Time: {elapsed_time:.8f}s | Mem Delta: {mem_delta:+.5f} MB")
+    # print(f"[{step_name}] Time: {elapsed_time:.8f}s | Mem Delta: {mem_delta:+.5f} MB")
 
 
 @contextmanager

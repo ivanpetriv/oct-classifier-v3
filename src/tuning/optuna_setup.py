@@ -107,7 +107,7 @@ class ReducerTuners:
         )
 
         params = {
-            "n_components": trial.suggest_int("pca_components", 16, 128, log=True),
+            "n_components": trial.suggest_int("pca_components", 50, 500, log=True),
             "whiten": trial.suggest_categorical("pca_whiten", [True, False]),
             "svd_solver": svd_solver,
             "random_state": 42,

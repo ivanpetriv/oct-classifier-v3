@@ -36,12 +36,21 @@ class LbpFeaturesExtractor(BaseFeaturesExtractor):
         """
         Extracts the LBP feature vector from the image.
         """
-        lbp_image = local_binary_pattern(image, self.n_points, self.radius, self.method)
-        
-        # --- OPTIMIZATION: Ignore Background Padding ---
-        tissue_mask = image > self.padding_threshold
+        if np.issubdtype(image.dtype, np.floating):
+            if image.max() <= 1.0:
+                img_int = (image * 255.0).astype(np.uint8)
+            else:
+                img_int = image.astype(np.uint8)
+        else:
+            img_int = image
+
+        lbp_image = local_binary_pattern(
+            img_int, self.n_points, self.radius, self.method
+        )
+
+        tissue_mask = img_int > self.padding_threshold
         valid_lbp_values = lbp_image[tissue_mask]
-        
+
         if len(valid_lbp_values) > 0:
             hist, _ = np.histogram(
                 valid_lbp_values,
@@ -51,5 +60,5 @@ class LbpFeaturesExtractor(BaseFeaturesExtractor):
             )
         else:
             hist = np.zeros(self.num_bins, dtype=np.float64)
-        
+
         return hist
