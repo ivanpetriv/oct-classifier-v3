@@ -1,6 +1,7 @@
 import concurrent.futures
+import re
+import uuid
 from pathlib import Path
-from typing import Generator, Literal
 
 import numpy as np
 from PIL import Image
@@ -17,21 +18,86 @@ from preprocessing.preprocessing_pipeline import PreprocessingPipeline
 
 
 class OctDataset:
-    allowed_image_extensions: set[str] = {".jpg", ".jpeg", ".png"}
+    allowed_image_extensions: frozenset[str] = frozenset({".jpg", ".jpeg", ".png"})
 
     def __init__(
         self,
         dataset_path: Path,
         allowed_classes: list[str],
-        preprocessor: PreprocessingPipeline | None,
+        samples_per_class: int | None = None,
+        preprocessor: PreprocessingPipeline | None = None,
     ):
+        """Initializes the datsset.
+
+        Args:
+            dataset_path (Path): Path to the dataset. Must contain disease subfolders, and each subfolder contains images.
+            allowed_classes (list[str]): Classes to load.
+            samples_per_class (int | None, optional): How many items per disease. Defaults to None.
+            preprocessor (PreprocessingPipeline | None, optional): Image preprocessor. Defaults to None.
+        """
         self.path = dataset_path
         self.allowed_classes = allowed_classes
+        self.samples_per_class = samples_per_class
         self.preprocessor = preprocessor
 
-    @property
-    def class_mapping(self) -> dict[str, int]:
-        return {class_name: idx for idx, class_name in enumerate(self.allowed_classes)}
+        # Maps disease names to numbers
+        self.class_mapping = {c: i for i, c in enumerate(self.allowed_classes)}
+
+        (
+            self.image_paths,
+            self.labels,
+            self.class_names,
+            self.patient_ids,
+        ) = self._index_dataset()
+
+    def _extract_patient_id(self, path: Path) -> str:
+        """If using Ravelli dataset, extracts according to
+        `<disease>-<patientid>-<number>`.
+        Otherwise creates a random id.
+        """
+        match = re.match(r"^[^-]+-(\d+)-\d+$", path.stem)
+        if match is None:
+            return path.stem
+        return match.group(1)
+
+    def _index_dataset(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Returns image path, label index, class name, patient id.
+        """
+        image_paths: list[Path] = []
+        labels: list[int] = []
+        class_names: list[str] = []
+        patient_ids: list[str] = []
+
+        for class_name, label_idx in self.class_mapping.items():
+            class_dir = self.path / class_name
+            if not class_dir.exists():
+                print(f"Warning: Disease directory '{class_dir}' does not exist.")
+                continue
+
+            valid_samples = 0
+            for image_path in sorted(class_dir.iterdir()):
+                if image_path.suffix.lower() not in self.allowed_image_extensions:
+                    continue
+                if (
+                    self.samples_per_class is not None
+                    and valid_samples >= self.samples_per_class
+                ):
+                    break
+
+                image_paths.append(image_path)
+                labels.append(label_idx)
+                class_names.append(class_name)
+                patient_ids.append(self._extract_patient_id(image_path))
+
+                valid_samples += 1
+
+        return (
+            np.array(image_paths),
+            np.array(labels, dtype=np.uint8),
+            np.array(class_names),
+            np.array(patient_ids),
+        )
 
     def _process_image(
         self, image_path: Path, label_idx: int, class_name: str
@@ -39,60 +105,42 @@ class OctDataset:
         with Image.open(image_path) as img:
             img = img.convert("L")
             arr = np.array(img)
+
             if self.preprocessor is not None:
                 arr = self.preprocessor.execute(arr)
+
             arr = np.ascontiguousarray(arr, dtype=np.uint8)
+
         return arr, label_idx, class_name
 
-    def _get_image_paths(
-        self, split_path: Path, samples_per_class: int | None = None
-    ) -> list[tuple[Path, int, str]]:
-        image_paths: list[tuple[Path, int, str]] = []
-        for class_name, label_idx in self.class_mapping.items():
-            class_dir = split_path / class_name
-            if not class_dir.exists():
-                continue
+    def _process_concurrently(
+        self, paths: np.ndarray, labels: np.ndarray, classes: np.ndarray
+    ):
+        """Handles threading and yields results as they complete, completely blind to the UI."""
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_to_img = {
+                executor.submit(self._process_image, p, l, c): p
+                for p, l, c in zip(paths, labels, classes)
+            }
 
-            collected_for_class = 0
-            for image_path in class_dir.iterdir():
-                if image_path.suffix.lower() in self.allowed_image_extensions:
-                    image_paths.append((image_path, label_idx, class_name))
-                    collected_for_class += 1
+            for future, val in future_to_img.items():
+                try:
+                    yield future.result(), None
+                except Exception as e:
+                    yield None, (val, e)
 
-                    if (
-                        samples_per_class is not None
-                        and collected_for_class >= samples_per_class
-                    ):
-                        break
+    def get_batch(
+        self, indices: np.ndarray, description: str = "Loading Data"
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Loads and processes the images for the given indices concurrently."""
+        # This method only has rich progress bar.
 
-        if not image_paths:
-            print(f"Warning: No images found for split '{split_path}'.")
+        paths = self.image_paths[indices]
+        labels = self.labels[indices]
+        classes = self.class_names[indices]
 
-        return image_paths
-
-    def get_split_labels(
-        self,
-        dataset_split_name: Literal["train", "val", "test"],
-        samples_per_class: int,
-    ) -> np.ndarray:
-        """Fast metadata pass: extracts labels without reading or processing images."""
-        split_path = self.path / dataset_split_name
-        image_paths = self._get_image_paths(split_path, samples_per_class)
-
-        # Pull only the label integer (index 1) from the path metadata tuples
-        labels = [label_idx for _, label_idx, _ in image_paths]
-        return np.array(labels, dtype=np.uint8)
-
-    def get_image_batch(
-        self,
-        dataset_split_name: Literal["train", "val", "test"],
-        batch_size: int,
-        samples_per_class: int | None = None,
-    ) -> Generator[tuple[np.ndarray, np.ndarray], None, None]:
-        split_path = self.path / dataset_split_name
-        image_paths = self._get_image_paths(split_path, samples_per_class)
-
-        batch_images, batch_labels = [], []
+        X_data: list[np.ndarray] = []
+        y_data: list[int] = []
 
         with Progress(
             SpinnerColumn(),
@@ -102,79 +150,28 @@ class OctDataset:
             TextColumn("[yellow]{task.fields[current_class]}"),
             TimeRemainingColumn(),
         ) as progress:
-            extraction_task = progress.add_task(
-                f"[green]Extracting {dataset_split_name.upper()}",
-                total=len(image_paths),
-                current_class="",
+            task = progress.add_task(
+                f"[green]{description}", total=len(paths), current_class=""
             )
-
             current_displayed_class = ""
 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future_to_img = {
-                    executor.submit(self._process_image, path, label, class_name): path
-                    for path, label, class_name in image_paths
-                }
+            for result, error in self._process_concurrently(paths, labels, classes):
+                if error is not None:
+                    path, e = error
+                    progress.console.print(f"[red]Failed to process {path.name}: {e}")
+                elif result is not None:
+                    image_array, label_idx, class_name = result
 
-                # As tasks complete (regardless of order), yield them
-                for future in concurrent.futures.as_completed(future_to_img):
-                    try:
-                        image_array, label_idx, class_name = future.result()
+                    if class_name != current_displayed_class:
+                        progress.update(task, current_class=f"({class_name})")
+                        current_displayed_class = class_name
 
-                        del future_to_img[future]
+                    X_data.append(image_array)
+                    y_data.append(label_idx)
 
-                        if class_name != current_displayed_class:
-                            progress.update(
-                                extraction_task, current_class=f"({class_name})"
-                            )
-                            current_displayed_class = class_name
+                progress.advance(task)
 
-                        batch_images.append(image_array)
-                        batch_labels.append(label_idx)
+        if not X_data:
+            raise ValueError("No data could be gathered for the given indices.")
 
-                        if len(batch_images) == batch_size:
-                            yield (
-                                np.array(batch_images, dtype=np.uint8),
-                                np.array(batch_labels, dtype=np.uint8),
-                            )
-                            batch_images, batch_labels = [], []
-
-                    except Exception as e:
-                        failed_path = future_to_img[future]
-                        progress.console.print(
-                            f"[red]Failed to process {failed_path.name}: {e}"
-                        )
-
-                    progress.advance(extraction_task)
-
-        # Yield remainder
-        if batch_images:
-            yield (
-                np.array(batch_images, dtype=np.uint8),
-                np.array(batch_labels, dtype=np.uint8),
-            )
-
-    def gather_full_split(
-        self,
-        dataset_split_name: Literal["train", "val", "test"],
-        target_samples_per_class: int,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        batch_size = 32
-        generator = self.get_image_batch(
-            dataset_split_name, batch_size, target_samples_per_class
-        )
-
-        X_batches, y_batches = [], []
-        for X_batch, y_batch in generator:
-            X_batches.append(X_batch)
-            y_batches.append(y_batch)
-
-        if not X_batches:
-            raise ValueError(
-                f"No data could be gathered for split '{dataset_split_name}'."
-            )
-
-        return (
-            np.concatenate(X_batches, axis=0).astype(np.float32),
-            np.concatenate(y_batches, axis=0),
-        )
+        return np.array(X_data, dtype=np.float32), np.array(y_data, dtype=np.uint8)

@@ -1,65 +1,56 @@
-from typing import cast
-
-from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from config_settings.oct_config import OctConfig
 from feature_extraction.base_feature_extractor import BaseFeaturesExtractor
 from feature_extraction.extractors.cdch_feature_extractor import CdchFeaturesExtractor
 from feature_extraction.extractors.ldch_feature_extractor import LdchFeaturesExtractor
 from feature_extraction.extractors.rdch_feature_extractor import RdchFeaturesExtractor
-from feature_extraction.registry import FeatureExtractorRegistry
 
 
 class FeatureExtractorVisualizer:
     """
     Visualizer for geometric feature extraction overlays and resulting heatmaps.
+    Can render multiple extractors side-by-side in a single figure.
     """
 
-    def __init__(self, feature_extractor: BaseFeaturesExtractor):
-        self.feature_extractor = feature_extractor
+    def __init__(self, feature_extractors: list[BaseFeaturesExtractor]):
+        self.feature_extractors = feature_extractors
 
-    def _visualize_ldch(self, image: np.ndarray, ax_img: plt.Axes) -> tuple[str, str]:
-        """Draws DCH (Linear) grid lines and returns (title, y_label)."""
-        feature_extractor = cast(LdchFeaturesExtractor, self.feature_extractor)
-
+    def _visualize_ldch(
+        self, extractor: LdchFeaturesExtractor, image: np.ndarray, ax_img: plt.Axes
+    ) -> tuple[str, str]:
         image_height, image_width = image.shape[:2]
+        title = f"LDCH ({extractor.sections} {extractor.layout}s)"
 
-        title = f"DCH ({feature_extractor.sections} {feature_extractor.layout}s)"
-
-        if feature_extractor.layout == "row":
-            step = image_height / feature_extractor.sections
-            for i in range(1, feature_extractor.sections):
-                y = int(i * step)
-                ax_img.axhline(y, color="red", linewidth=0.5, alpha=0.7, linestyle="--")
+        if extractor.layout == "row":
+            step = image_height / extractor.sections
+            for i in range(1, extractor.sections):
+                ax_img.axhline(
+                    int(i * step), color="red", linewidth=0.5, alpha=0.7, linestyle="--"
+                )
             return title, "Row Section Index"
 
-        elif feature_extractor.layout == "col":
-            step = image_width / feature_extractor.sections
-            for i in range(1, feature_extractor.sections):
-                x = int(i * step)
-                ax_img.axvline(x, color="red", linewidth=0.5, alpha=0.7, linestyle="--")
+        elif extractor.layout == "col":
+            step = image_width / extractor.sections
+            for i in range(1, extractor.sections):
+                ax_img.axvline(
+                    int(i * step), color="red", linewidth=0.5, alpha=0.7, linestyle="--"
+                )
             return title, "Column Section Index"
 
         return title, "Index"
 
-    def _visualize_rdch(self, image: np.ndarray, ax_img: plt.Axes) -> tuple[str, str]:
-        """Draws RDCH concentric rings and returns (title, y_label)."""
-        feature_extractor = cast(RdchFeaturesExtractor, self.feature_extractor)
-
+    def _visualize_rdch(
+        self, extractor: RdchFeaturesExtractor, image: np.ndarray, ax_img: plt.Axes
+    ) -> tuple[str, str]:
         image_height, image_width = image.shape[:2]
 
-        # Calculate absolute center (Handling normalized [0; 1] coordinates)
-        if (
-            feature_extractor.center_x is not None
-            and feature_extractor.center_y is not None
-        ):
-            abs_center_x = int(feature_extractor.center_x * image_width)
-            abs_center_y = int(feature_extractor.center_y * image_height)
-        else:
-            abs_center_x, abs_center_y = image_width // 2, image_height // 2
+        if extractor.center is None:
+            extractor.center = (0.5, 0.5)
+
+        abs_center_x = int(extractor.center[0] * image_width)
+        abs_center_y = int(extractor.center[1] * image_height)
 
         ax_img.scatter(abs_center_x, abs_center_y, color="lime", s=4, zorder=3)
 
@@ -70,7 +61,7 @@ class FeatureExtractorVisualizer:
             np.hypot(corners[:, 0] - abs_center_x, corners[:, 1] - abs_center_y)
         )
 
-        ring_width = feature_extractor.ring_step
+        ring_width = extractor.ring_step
         num_rings = int(np.ceil(max_radius / ring_width))
 
         for r in range(1, num_rings + 1):
@@ -85,31 +76,22 @@ class FeatureExtractorVisualizer:
             )
             ax_img.add_patch(circle)
 
-        return (
-            f"Rings (Px: [{abs_center_x}, {abs_center_y}])",
-            "Ring Index (Inner to Outer)",
-        )
+        return f"RDCH (Px: [{abs_center_x}, {abs_center_y}])", "Ring Index"
 
-    def _visualize_cdch(self, image: np.ndarray, ax_img: plt.Axes) -> tuple[str, str]:
-        """Draws CDCH rays and returns (title, y_label)."""
-        feature_extractor = cast(CdchFeaturesExtractor, self.feature_extractor)
-
+    def _visualize_cdch(
+        self, extractor: CdchFeaturesExtractor, image: np.ndarray, ax_img: plt.Axes
+    ) -> tuple[str, str]:
         image_height, image_width = image.shape[:2]
 
-        # Calculate absolute center (Handling normalized [0; 1] coordinates)
-        if (
-            feature_extractor.center_x is not None
-            and feature_extractor.center_y is not None
-        ):
-            abs_center_x = int(feature_extractor.center_x * image_width)
-            abs_center_y = int(feature_extractor.center_y * image_height)
-        else:
-            abs_center_x, abs_center_y = image_width // 2, image_height // 2
+        if extractor.center is None:
+            extractor.center = (0.5, 0.5)
+
+        abs_center_x = int(extractor.center[0] * image_width)
+        abs_center_y = int(extractor.center[1] * image_height)
 
         ax_img.scatter(abs_center_x, abs_center_y, color="lime", s=4, zorder=3)
-
         max_radius = int(np.hypot(image_width, image_height))
-        all_angles = np.arange(0, 360, feature_extractor.angle_step) - 90
+        all_angles = np.arange(0, 360, extractor.angle_step) - 90
         all_radians = np.deg2rad(all_angles)
 
         for angle in all_radians:
@@ -123,69 +105,71 @@ class FeatureExtractorVisualizer:
                 alpha=0.7,
             )
 
-        return f"Rays (Px: [{abs_center_x}, {abs_center_y}])", "Ray Angle Index"
+        return f"CDCH (Px: [{abs_center_x}, {abs_center_y}])", "Ray Angle Index"
 
     def visualize(self, image: np.ndarray, save_path: str | None = None) -> None:
-        """
-        Executes the feature extractor on the image and plots the overlay alongside the heatmap.
-        """
-        features = self.feature_extractor.extract(image)
+        num_extractors = len(self.feature_extractors)
+        if num_extractors == 0:
+            print("No feature extractors provided to visualize.")
+            return
+
         image_height, image_width = image.shape[:2]
 
-        fig, (ax_img, ax_heat) = plt.subplots(nrows=2, ncols=1, figsize=(6, 10))
-
-        # 1. Base Image Setup
-        ax_img.imshow(image, cmap="gray")
-        ax_img.set_xlim(0, image_width)
-        ax_img.set_ylim(image_height, 0)
-        ax_img.axis("off")
-
-        # 2. Dynamic Overlay Routing
-        if isinstance(self.feature_extractor, CdchFeaturesExtractor):
-            title, y_label = self._visualize_cdch(image, ax_img)
-        elif isinstance(self.feature_extractor, LdchFeaturesExtractor):
-            title, y_label = self._visualize_ldch(image, ax_img)
-        elif isinstance(self.feature_extractor, RdchFeaturesExtractor):
-            title, y_label = self._visualize_rdch(image, ax_img)
-        else:
-            title = type(self.feature_extractor).__name__
-            y_label = "Index"
-
-        ax_img.set_title(title)
-
-        # 3. Heatmap Setup
-        heatmap_h, heatmap_w = features.shape
-        target_aspect = (image_height / image_width) * (heatmap_w / heatmap_h)
-
-        im = ax_heat.imshow(
-            features, cmap="gray", aspect=target_aspect, interpolation="nearest"
+        # Change to N rows, 2 columns.
+        # Increase vertical size dynamically based on the number of extractors.
+        fig, axes = plt.subplots(
+            nrows=num_extractors,
+            ncols=2,
+            figsize=(14, 5 * num_extractors),
+            squeeze=False,
         )
-        ax_heat.set_title(f"Extracted Matrix ({type(self.feature_extractor).__name__})")
-        ax_heat.set_xlabel("Intensity Bins")
-        ax_heat.set_ylabel(y_label)
 
-        divider = make_axes_locatable(ax_heat)
-        cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = plt.colorbar(im, cax=cax)
-        cbar.set_label("Normalized Frequency", rotation=270, labelpad=15)
+        for row_idx, extractor in enumerate(self.feature_extractors):
+            ax_img = axes[row_idx, 0]
+            ax_heat = axes[row_idx, 1]
 
+            features = extractor.extract(image)
+
+            # 1. Base Image Setup
+            ax_img.imshow(image, cmap="gray")
+            ax_img.set_xlim(0, image_width)
+            ax_img.set_ylim(image_height, 0)
+            ax_img.axis("off")
+
+            # 2. Dynamic Overlay Routing
+            if isinstance(extractor, CdchFeaturesExtractor):
+                title, y_label = self._visualize_cdch(extractor, image, ax_img)
+            elif isinstance(extractor, LdchFeaturesExtractor):
+                title, y_label = self._visualize_ldch(extractor, image, ax_img)
+            elif isinstance(extractor, RdchFeaturesExtractor):
+                title, y_label = self._visualize_rdch(extractor, image, ax_img)
+            else:
+                title = type(extractor).__name__
+                y_label = "Index"
+
+            ax_img.set_title(title)
+
+            # 3. Heatmap Setup
+            # Set aspect="auto" to prevent the charts from being squashed
+            im = ax_heat.imshow(
+                features, cmap="gray", aspect="auto", interpolation="nearest"
+            )
+
+            ax_heat.set_title(f"Extracted Matrix ({type(extractor).__name__})")
+            ax_heat.set_xlabel("Intensity Bins")
+            ax_heat.set_ylabel(y_label)
+
+            # Attach colorbar cleanly
+            divider = make_axes_locatable(ax_heat)
+            cax = divider.append_axes("right", size="5%", pad=0.15)
+            cbar = plt.colorbar(im, cax=cax)
+            cbar.set_label("Normalized Frequency", rotation=270, labelpad=15)
+
+        # Ensure subplots don't overlap their labels
         plt.tight_layout()
 
         if save_path:
-            plt.savefig(save_path, bbox_inches="tight")  # pyright: ignore[reportUnknownMemberType]
+            plt.savefig(save_path, bbox_inches="tight")
             print(f"Saved visualization to {save_path}")
         else:
             plt.show()
-
-
-if __name__ == "__main__":
-    config = OctConfig.from_yaml("config/run.yaml")
-
-    feature_extractor = FeatureExtractorRegistry.create(
-        config.feature_extractor.active, **vars(config.feature_extractor.params)
-    )
-    visualizer = FeatureExtractorVisualizer(feature_extractor)
-    with Image.open(
-        r"/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized/train/CNV/CNV-163081-45.jpeg"
-    ) as file_object:
-        visualizer.visualize(np.array(file_object))

@@ -1,80 +1,76 @@
-"""
-Quick start guide for running focused Optuna tuning.
-
-Usage:
-    python quick_start_optuna.py --mode quick     # 2-3 min test run
-    python quick_start_optuna.py --mode full      # 1-2 hour full tuning
-    python quick_start_optuna.py --mode analyze   # Analyze previous results
-"""
-
 import argparse
 from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
 
 import numpy as np
 import optuna
 
-from tuning.optuna_run import FocusedOptunaTuner
+from tuning.objective import FocusedOptunaTuner
 
 
-def run_quick_test():
-    """Quick test with 2 folds, 20 trials (2-3 minutes)."""
+def _create_and_run_study(
+    mode_name: str,
+    n_trials: int,
+    n_folds: int,
+    db_name: str,
+    study_name: str,
+    n_jobs: int = 1,
+):
     print("\n" + "=" * 70)
-    print("QUICK TEST: 20 trials × 2 folds = ~3 minutes")
+    print(f"{mode_name.upper()} TUNING: {n_trials} trials × {n_folds} folds")
     print("=" * 70 + "\n")
 
     tuner = FocusedOptunaTuner(
         config_path=Path("config/run.yaml"),
         classifiers=["svm", "random_forest"],
         n_splits=5,
-        n_folds_to_train=1,
+        n_folds_to_train=n_folds,
         random_state=42,
     )
 
     study = optuna.create_study(
-        storage="sqlite:///optuna_tuning_quick.db",
-        study_name="oct_quick_test_v2",
+        storage=f"sqlite:///{db_name}.db",
+        study_name=study_name,
         load_if_exists=True,
         direction="maximize",
     )
 
     study.optimize(
         tuner.objective,
-        n_trials=5,
-        n_jobs=-1,  # Parallel
+        n_trials=n_trials,
+        n_jobs=n_jobs,
         show_progress_bar=True,
     )
 
+    return study
+
+
+def run_quick_test():
+    """Quick test with 2 folds, 5 trials."""
+    study = _create_and_run_study(
+        mode_name="Quick Test",
+        n_trials=5,
+        n_folds=1,
+        db_name="optuna_tuning_quick",
+        study_name="oct_quick_test_v1",
+        n_jobs=-1,
+    )
     print_results(study, "QUICK TEST")
 
 
 def run_full_tuning():
-    """Full tuning with all 5 folds, 150 trials (1-2 hours)."""
-    print("\n" + "=" * 70)
-    print("FULL TUNING: 150 trials × 5 folds = ~1-2 hours")
-    print("=" * 70 + "\n")
-
-    tuner = FocusedOptunaTuner(
-        config_path=Path("config/run.yaml"),
-        classifiers=["svm", "random_forest"],
-        n_splits=5,
-        n_folds_to_train=1,
-        random_state=42,
-    )
-
-    study = optuna.create_study(
-        storage="sqlite:///optuna_tuning.db",
-        study_name="oct_rcldch_tuning",
-        load_if_exists=True,
-        direction="maximize",
-    )
-
-    study.optimize(
-        tuner.objective,
-        n_trials=1,
+    """Full tuning with all 5 folds, 200 trials."""
+    study = _create_and_run_study(
+        mode_name="Full Tuning",
+        n_trials=200,
+        n_folds=1,
+        db_name="optuna_tuning",
+        study_name="oct_rcldch_tuning_v1",
         n_jobs=3,
-        show_progress_bar=True,
     )
-
     print_results(study, "FULL TUNING")
 
 
@@ -84,25 +80,28 @@ def analyze_results(db_path: str = "sqlite:///optuna_tuning.db"):
     print("ANALYZING RESULTS")
     print("=" * 70 + "\n")
 
-    # Load study
-    study = optuna.load_study(
-        storage=db_path,
-        study_name="oct_rcldch_tuning",
-    )
+    try:
+        study = optuna.load_study(
+            storage=db_path,
+            study_name="oct_rcldch_tuning",
+        )
+    except Exception as e:
+        print(f"Failed to load study from {db_path}. Error: {e}")
+        return
 
     print_results(study, "ANALYSIS")
 
-    # Detailed breakdown
+    # Detailed breakdown by classifier
     print("\n" + "=" * 70)
     print("CLASSIFIER COMPARISON")
     print("=" * 70)
 
     trials_df = study.trials_dataframe()
 
-    if "classifier_type" in trials_df.columns:
-        for classifier in trials_df["classifier_type"].unique():
+    if "params_classifier_type" in trials_df.columns:
+        for classifier in trials_df["params_classifier_type"].unique():
             scores = trials_df[
-                (trials_df["classifier_type"] == classifier)
+                (trials_df["params_classifier_type"] == classifier)
                 & (trials_df["state"] == "COMPLETE")
             ]["value"]
 
@@ -113,47 +112,14 @@ def analyze_results(db_path: str = "sqlite:///optuna_tuning.db"):
                 print(f"  Mean: {scores.mean():.4f}")
                 print(f"  Std:  {scores.std():.4f}")
 
-    # PCA analysis
-    print("\n" + "=" * 70)
-    print("PCA COMPONENTS ANALYSIS")
-    print("=" * 70)
 
-    if "pca_components" in trials_df.columns:
-        pca_df = trials_df[
-            (trials_df["state"] == "COMPLETE") & (trials_df["value"].notna())
-        ][["pca_components", "value"]].sort_values("pca_components")
-
-        if len(pca_df) > 0:
-            print("\nPCA Components vs F1 Score:")
-            for _, row in pca_df.iterrows():
-                pca_c = int(row["pca_components"])
-                f1 = row["value"]
-                print(f"  PCA={pca_c:3d}: F1={f1:.4f}")
-
-    # RCLDCH analysis
-    print("\n" + "=" * 70)
-    print("RCLDCH CONFIGURATION ANALYSIS")
-    print("=" * 70)
-
-    if "rcldch_sections" in trials_df.columns:
-        rcldch_df = trials_df[
-            (trials_df["state"] == "COMPLETE") & (trials_df["value"].notna())
-        ].copy()
-
-        if len(rcldch_df) > 0:
-            rcldch_df = (
-                rcldch_df.groupby(["rcldch_sections", "rcldch_bins"])["value"]
-                .agg(["mean", "count"])
-                .sort_values("mean", ascending=False)
-            )
-
-            print("\nRCLDCH Configurations (Top 10):")
-            print(rcldch_df.head(10).to_string())
-
-
-def print_results(study, title: str = "RESULTS"):
+def print_results(study: optuna.Study, title: str = "RESULTS"):
     """Print formatted results."""
-    best_trial = study.best_trial
+    try:
+        best_trial = study.best_trial
+    except ValueError:
+        print("No completed trials found in this study.")
+        return
 
     print(f"\n{title}")
     print("=" * 70)
@@ -163,7 +129,6 @@ def print_results(study, title: str = "RESULTS"):
     print("Best Parameters:")
     print("-" * 70)
 
-    # Organize parameters by category
     params = best_trial.params
     categories = {
         "Classifier": [
@@ -183,7 +148,6 @@ def print_results(study, title: str = "RESULTS"):
                 else:
                     print(f"  {param:35s}: {value}")
 
-    # Statistics
     print("\n" + "-" * 70)
     print("Statistics:")
     print("-" * 70)
@@ -199,9 +163,7 @@ def print_results(study, title: str = "RESULTS"):
         print(f"Std F1 score: {np.std(values):.4f}")
         print(f"Min F1 score: {np.min(values):.4f}")
         print(f"Max F1 score: {np.max(values):.4f}")
-        print(f"Improvement over baseline (68%): {(np.max(values) - 0.68) * 100:.1f}%")
 
-    # Top 10
     print("\n" + "-" * 70)
     print("Top 10 Trials:")
     print("-" * 70)
@@ -221,7 +183,7 @@ def print_results(study, title: str = "RESULTS"):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Quick start Optuna tuning for RCLDCH OCT classifier"
+        description="Optuna tuning for RCLDCH OCT classifier"
     )
     parser.add_argument(
         "--mode",

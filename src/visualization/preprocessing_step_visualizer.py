@@ -1,6 +1,9 @@
+import argparse
 import random
 from pathlib import Path
+from typing import Any
 
+import joblib  # type: ignore
 import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
@@ -20,6 +23,9 @@ class PreprocessingStepsVisualizer:
         self,
         image: np.ndarray,
         save_path: str | None = None,
+        predicted_class: str | None = None,
+        actual_class: str | None = None,
+        confidence: float | None = None,
     ):
         image = image.copy()
 
@@ -72,6 +78,13 @@ class PreprocessingStepsVisualizer:
                 )
                 ax.axis("off")
 
+            # Add prediction and confidence to the plot title if provided
+            if predicted_class is not None:
+                title_str = f"Prediction: {predicted_class}, actually: {actual_class}"
+                if confidence is not None:
+                    title_str += f" (Confidence: {confidence * 100:.1f}%)"
+                fig.suptitle(title_str, fontsize=16, fontweight="bold")
+
             plt.tight_layout()
 
             if save_path is not None:
@@ -97,7 +110,6 @@ class PreprocessingStepsVisualizer:
         If class_name is provided, only images from that class
         are considered.
         """
-
         search_path = (
             dataset_path / class_name if class_name is not None else dataset_path
         )
@@ -118,34 +130,137 @@ class PreprocessingStepsVisualizer:
         dataset_path: Path,
         class_name: str | None = None,
         save_path: str | None = None,
+        model: Any | None = None,
+        classes: list[str] | None = None,
     ):
         """
         Selects a random image from the dataset and visualizes
         all preprocessing stages.
         """
+        if class_name is None:
+            class_name = random.choice(classes or [])
 
         path = self.get_random_image(
             dataset_path,
             class_name,
         )
 
-        print(f"Image: {path}")
+        print(f"Visualizing random image: {path}")
 
         with Image.open(path) as image_obj:
+            img_array = np.array(image_obj.convert("L"))
+
+            predicted_class = None
+            confidence = None
+
+            # Infer if a model was provided
+            if model is not None and classes is not None:
+                try:
+                    preds = model.predict([img_array])
+                    predicted_class = classes[int(preds[0])]
+                    if hasattr(model, "predict_proba"):
+                        probas = model.predict_proba([img_array])[0]
+                        confidence = float(np.max(probas))
+                except Exception as e:
+                    print(f"Failed to infer with model: {e}")
+
             self.visualize(
-                np.array(image_obj),
+                img_array,
                 save_path,
+                predicted_class=predicted_class,
+                actual_class=None,
+                confidence=confidence,
             )
 
 
 if __name__ == "__main__":
-    config = OctConfig.from_yaml("config/run.yaml")
+    parser = argparse.ArgumentParser(
+        description="Visualize Preprocessing Pipeline Steps"
+    )
 
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=Path("config/run.yaml"),
+        help="Path to the configuration YAML file.",
+    )
+    parser.add_argument(
+        "--image",
+        type=Path,
+        default=None,
+        help="Path to a specific image to visualize. If omitted, a random image will be used.",
+    )
+    parser.add_argument(
+        "--class-name",
+        type=str,
+        default=None,
+        help="Target class for random image selection (default: CNV).",
+    )
+    parser.add_argument(
+        "--model",
+        type=Path,
+        default=None,
+        help="Path to the trained model (.joblib). If provided, predicted class and confidence will be displayed.",
+    )
+    parser.add_argument(
+        "--save",
+        type=str,
+        default=None,
+        help="Optional path to save the output matplotlib figure.",
+    )
+
+    args = parser.parse_args()
+
+    # Load configuration and initialize pipeline
+    config = OctConfig.from_yaml(args.config)
     pipeline = PreprocessingRegistry.create_pipeline(config.preprocessing_pipeline)
-
     visualizer = PreprocessingStepsVisualizer(pipeline)
 
-    visualizer.visualize_random(
-        dataset_path=config.paths.original_dataset,
-        class_name="CNV",
-    )
+    # Load model if a path is provided
+    model = None
+    if args.model:
+        if not args.model.exists():
+            print(f"Error: Could not find model at {args.model}")
+            exit(1)
+        print(f"Loading model from: {args.model}")
+        model = joblib.load(args.model)
+
+    # Route logic based on whether an image was explicitly provided
+    if args.image:
+        if not args.image.exists():
+            print(f"Error: Could not find image at {args.image}")
+            exit(1)
+
+        print(f"Visualizing provided image: {args.image}")
+        with Image.open(args.image) as img:
+            img_array = np.array(img.convert("L"))
+
+            predicted_class = None
+            confidence = None
+
+            # Run inference if a model is available
+            if model is not None:
+                try:
+                    preds = model.predict([img_array])
+                    predicted_class = config.dataset.classes[int(preds[0])]
+                    if hasattr(model, "predict_proba"):
+                        probas = model.predict_proba([img_array])[0]
+                        confidence = float(np.max(probas))
+                except Exception as e:
+                    print(f"Failed to infer with model: {e}")
+
+            visualizer.visualize(
+                img_array,
+                save_path=args.save,
+                predicted_class=predicted_class,
+                actual_class=None,
+                confidence=confidence,
+            )
+    else:
+        visualizer.visualize_random(
+            dataset_path=config.paths.original_dataset,
+            class_name=args.class_name,
+            save_path=args.save,
+            model=model,
+            classes=config.dataset.classes,
+        )

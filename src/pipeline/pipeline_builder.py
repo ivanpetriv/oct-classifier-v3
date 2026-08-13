@@ -66,7 +66,7 @@ def build_pipeline(
     if feature_extracting and config.feature_extractor:
         extracted_features = []
 
-        for item in config.feature_extractor:
+        for i, item in enumerate(config.feature_extractor):
             if isinstance(item, dict):
                 extractor_name, extractor_params = next(iter(item.items()))
             else:
@@ -82,7 +82,7 @@ def build_pipeline(
                 extractor_name, **extractor_params
             )
             extracted_features.append(
-                (f"extractor_{extractor_name}", extractor_instance)
+                (f"extractor_{extractor_name}_{i}", extractor_instance)
             )
 
         if len(extracted_features) == 1:
@@ -113,7 +113,11 @@ def build_pipeline(
             )
 
     if classification and config.classifier:
-        classifier_params = vars(config.classifier.params)
+        classifier_params = vars(config.classifier.params).copy()
+
+        if "random_state" not in classifier_params:
+            classifier_params["random_state"] = config.random_seed
+
         classifier = ClassifierRegistry.create(
             config.classifier.active, **classifier_params
         )

@@ -14,7 +14,7 @@ dataset:
   classes: [ "NORMAL", "CNV", "DRUSEN", "DME" ]
   # classes: [ "NORMAL", "CNV", "DRUSEN", "DME", "AMD", "CSR", "DR", "MH" ]
   # classes: ["NO", "AMD", "DME", "ERM", "RAO", "RVO", "VID"]
-  # classes: ["NO", "AMD", "DME", "ERM"]
+  # classes: ["NO", "AMD", "VID", "ERM"]
   samples_per_class: 500
   sampling_proportions:
     train: 80
@@ -22,6 +22,10 @@ dataset:
     test: 10
 
 preprocessing_pipeline:
+  - dwt_denoiser:
+      wavelet: "coif3"
+      mode: "hard"
+      wavelet_levels: 3
   - corner_artifact_remover:
       min_threshold: 230
   - rpe_aligner: {}
@@ -30,10 +34,7 @@ preprocessing_pipeline:
   #     roi_below: 40
   #     blur_sigma: 3
   #     max_jump: 5
-  - dwt_denoiser:
-      wavelet: "coif3"
-      mode: "hard"
-      wavelet_levels: 3
+
   # - clahe_filter:
   #     clip_limit: 10
   #     tile_grid_size: [8, 8]
@@ -41,32 +42,46 @@ preprocessing_pipeline:
       target_size: [256, 256]
 
 feature_extractor:
-  - rcldch:
+  # - rcldch:
+  #     sections: 64
+  #     pixel_range: [ 29, 234 ]
+  #     bins: 256
+  - ldch:
       sections: 64
+      layout: "row"
       pixel_range: [ 29, 234 ]
-      bins: 192
-  # active: "ldch"
-  # params:
-  #   sections: 32
-  #   layout: "row"
-  #   pixel_range: [ 0, 210 ]
-  #   bins: 192
+      bins: 256
+  - ldch:
+      sections: 64
+      layout: "col"
+      pixel_range: [ 29, 234 ]
+      bins: 256
+  - cdch:
+      angle_step: 10
+      center: [0.5, 0.5]
+      pixel_range: [ 29, 234 ]
+      bins: 256
+  - rdch:
+      ring_step: 10
+      center: [0.5, 0.5]
+      pixel_range: [ 29, 234 ]
+      bins: 256
   # - lbp:
   #     n_points: 8             # Number of circularly symmetric neighbor set points
   #     radius: 1               # Radius of circle
   #     method: "uniform"       # Standard method for rotational invariance
   #     norm: "l2"
   #     padding_threshold: 0
-  # - hog:
-  #     orientations: 20         # Standard number of gradient direction bins
-  #     pixels_per_cell: [12, 12]      # Evaluates an 8x8 pixel block
-  #     cells_per_block: [2, 2]      # Normalizes across a 2x2 block of cells
-  #     block_norm: "L2-Hys"
+  - hog:
+      orientations: 20         # Standard number of gradient direction bins
+      pixels_per_cell: [12, 12]      # Evaluates an 8x8 pixel block
+      cells_per_block: [2, 2]      # Normalizes across a 2x2 block of cells
+      block_norm: "L2-Hys"
 
 dimensionality_reduction:
   active: "pca"
   params:
-    n_components: 104
+    n_components: 150
     whiten: true
     svd_solver: "randomized"
     random_state: 42

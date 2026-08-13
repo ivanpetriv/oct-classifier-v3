@@ -223,7 +223,6 @@ class OctConfig(BaseModel):
     dataset: Dataset
     preprocessing_pipeline: list[dict[str, dict[str, Any]]]
 
-    # Updated to accept a list of dictionary configs or FeatureExtractorConfig instances
     feature_extractor: list[dict[str, dict[str, Any]]] | list[FeatureExtractorConfig]
 
     dimensionality_reduction: ReducerConfig

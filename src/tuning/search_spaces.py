@@ -111,6 +111,7 @@ class ReducerTuners:
             "whiten": trial.suggest_categorical("pca_whiten", [True, False]),
             "svd_solver": svd_solver,
             "random_state": 42,
+            "iterated_power": trial.suggest_int("pca_iterated_power", 2, 8),
         }
 
         if svd_solver == "randomized":
@@ -136,14 +137,13 @@ class ClassifierTuners:
         kernel = trial.suggest_categorical("svm_kernel", ["linear", "rbf", "poly"])
 
         params = {
-            "C": trial.suggest_float("svm_c", 0.001, 50, log=True),
             "kernel": kernel,
-            "class_weight": trial.suggest_categorical(
-                "svm_class_weight", [None, "balanced"]
-            ),
-            "shrinking": trial.suggest_categorical("svm_shrinking", [True]),
+            "C": trial.suggest_float("svm_c", 0.1, 100, log=True),
+            "gamma": trial.suggest_float("svm_gamma", 1e-5, 0.1, log=True),
+            "class_weight": trial.suggest_categorical("svm_class_weight", ["balanced"]),
+            "shrinking": trial.suggest_categorical("svm_shrinking", [True, False]),
             "random_state": 42,
-            "max_iter": 1500,
+            "max_iter": 2000,
         }
 
         if kernel in ["rbf", "poly"]:

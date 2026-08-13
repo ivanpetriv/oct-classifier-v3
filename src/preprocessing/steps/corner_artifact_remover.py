@@ -46,10 +46,15 @@ class CornerArtifactRemover(PreprocessingStep):
         for contour in contours:
             area = cv2.contourArea(contour)
 
-            if area == 0 or area > image_area * self.max_area_ratio:
+            # Removed the `area == 0` check so thin vertical lines are not skipped
+            if area > image_area * self.max_area_ratio:
                 continue
 
             perimeter = cv2.arcLength(contour, True)
+
+            # Avoid division by zero or errors if the perimeter is exceptionally small
+            if perimeter == 0:
+                continue
 
             polygon = cv2.approxPolyDP(
                 contour,
@@ -57,35 +62,44 @@ class CornerArtifactRemover(PreprocessingStep):
                 True,
             )
 
-            # Only triangles and quadrilaterals.
-            if len(polygon) not in (3, 4):
+            # Added 2 to account for 1D line segments on the edges
+            if len(polygon) not in (2, 3, 4, 5):
                 continue
 
             x, y, w, h = cv2.boundingRect(polygon)
 
-            touches_top_left = x <= 2 and y <= 2
-            touches_top_right = x + w >= img_w - 2 and y <= 2
-            touches_bottom_left = x <= 2 and y + h >= img_h - 2
-            touches_bottom_right = x + w >= img_w - 2 and y + h >= img_h - 2
+            touches_left = x <= 2
+            touches_right = x + w >= img_w - 2
+            touches_top = y <= 2
+            touches_bottom = y + h >= img_h - 2
 
-            touches_corner = (
-                touches_top_left
-                or touches_top_right
-                or touches_bottom_left
-                or touches_bottom_right
+            touches_edge = (
+                touches_left or touches_right or touches_top or touches_bottom
             )
 
-            if not touches_corner:
+            if not touches_edge:
                 continue
 
-            # Remove exactly the detected polygon.
             cv2.drawContours(
                 removal_mask,
-                [polygon],
+                [contour],
                 -1,
                 255,
                 thickness=cv2.FILLED,
             )
+            # Draw lines specifically for 2-point contours (thickness is needed since filled doesn't work on 1D lines)
+            if len(polygon) == 2:
+                cv2.drawContours(
+                    removal_mask,
+                    [contour],
+                    -1,
+                    255,
+                    thickness=2,
+                )
+
+        # Dilate the mask slightly to catch the anti-aliased gradient edges of the white artifacts
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        removal_mask = cv2.dilate(removal_mask, kernel, iterations=1)
 
         image[removal_mask > 0] = 0
 
