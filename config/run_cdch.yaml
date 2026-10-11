@@ -65,46 +65,11 @@ preprocessing_pipeline:
       target_size: [256, 120]
 
 feature_extractor:
-  # - rcldch:
-  #     sections: 128
-  #     pixel_range: [ 10, 228 ]
-  #     bins: 128
-  # - ldch:
-  #     sections: 32
-  #     layout: "row"
-  #     pixel_range: [28, 235]
-  #     bins: 192
-  # - ldch:
-  #     sections: 32
-  #     layout: "col"
-  #     pixel_range: [3, 253]
-  #     bins: 128
-  # - cdch:
-  #     angle_step: 5
-  #     center: [0.44, 0.55]
-  #     pixel_range: [30, 222]
-  #     bins: 256
   - cdch:
-      angle_step: 1
-      center: [0.5, 0.5]
-      pixel_range: [0, 255]
+      angle_step: 5
+      center: [0.44, 0.55]
+      pixel_range: [30, 222]
       bins: 256
-  # - rdch:
-  #     ring_step: 10
-  #     center: [0.5, 0.5]
-  #     pixel_range: [ 29, 234 ]
-  #     bins: 256
-  # - lbp:
-  #     n_points: 8             # Number of circularly symmetric neighbor set points
-  #     radius: 1               # Radius of circle
-  #     method: "uniform"       # Standard method for rotational invariance
-  #     norm: "l2"
-  #     padding_threshold: 0
-  # - hog:
-  #     orientations: 20         # Standard number of gradient direction bins
-  #     pixels_per_cell: [12, 12]      # Evaluates an 8x8 pixel block
-  #     cells_per_block: [2, 2]      # Normalizes across a 2x2 block of cells
-  #     block_norm: "L2-Hys"
 
 dimensionality_reduction:
   active: "pca"

@@ -1,14 +1,6 @@
 # yaml-language-server: $schema=./run_schema.json
 random_seed: 42
 
-# feature_ravelli_aaa_v? - rcldch
-# feature_ravelli_plushog_v3 - rcldch + hog
-# feature_ravelli_cdch_v? - cdch
-# feature_ravelli_rdch_v? - rdch
-# ?? - ldch alone (row)
-# feature_ravelli_all_v? - ldch, cdch, lbp, hog
-
-# Try to remove drusen
 
 paths:
   normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/"
@@ -21,16 +13,6 @@ paths:
 
 dataset:
   classes: ["NORMAL", "CNV", "DRUSEN", "DME"]
-  # classes:
-  #   NORMAL: "IDK"
-  #   CNV: "CNV"
-  #   DRUSEN: "IDK"
-  #   DME: "DME"
-  # classes: [ "NORMAL", "DRUSEN" ]
-  # classes: [ "CNV", "DME" ]
-  # classes: [ "NORMAL", "CNV", "DRUSEN", "DME", "AMD", "CSR", "DR", "MH" ]
-  # classes: ["NO", "AMD", "DME", "ERM", "RAO", "RVO", "VID"]
-  # classes: ["NO", "AMD", "VID", "ERM"]
   samples_per_class: 300
   sampling_proportions:
     train: 80
@@ -38,11 +20,11 @@ dataset:
     test: 10
 
 preprocessing_pipeline:
-  # - cropper:
-  #     top: 8
-  #     bottom: 8
-  #     left: 8
-  #     right: 8
+  - cropper:
+      top: 8
+      bottom: 8
+      left: 8
+      right: 8
   - corner_artifact_remover:
       min_threshold: 217
   - dwt_denoiser:
@@ -51,11 +33,6 @@ preprocessing_pipeline:
       mode: "soft"
       wavelet_levels: 1
       rescale_sigma: false
-
-  # - rpe_aligner:
-  #     blur_sigma: 2
-  #     poly_degree: 3
-  #     max_jump: 5
 
   - rpe_roi_aligner:
       roi_above: 137
@@ -71,40 +48,15 @@ preprocessing_pipeline:
       target_size: [256, 120]
 
 feature_extractor:
-  # - rcldch:
-  #     sections: 128
-  #     pixel_range: [ 10, 228 ]
-  #     bins: 128
-  # - ldch:
-  #     sections: 32
-  #     layout: "row"
-  #     pixel_range: [22, 202]
-  #     bins: 64
-  # - ldch:
-  #     sections: 32
-  #     layout: "col"
-  #     pixel_range: [37, 250]
-  #     bins: 64
   - cdch:
       angle_step: 45
       center: [0.641723630123104, 0.5915339808178999]
       pixel_range: [35, 238]
       bins: 224
-  # - rdch:
-  #     ring_step: 10
-  #     center: [0.5, 0.5]
-  #     pixel_range: [ 29, 234 ]
-  #     bins: 256
-  # - lbp:
-  #     n_points: 8             # Number of circularly symmetric neighbor set points
-  #     radius: 1               # Radius of circle
-  #     method: "uniform"       # Standard method for rotational invariance
-  #     norm: "l2"
-  #     padding_threshold: 0
   - hog:
-      orientations: 10 # Standard number of gradient direction bins
-      pixels_per_cell: [16, 16] # Evaluates an 8x8 pixel block
-      cells_per_block: [3, 3] # Normalizes across a 2x2 block of cells
+      orientations: 10
+      pixels_per_cell: [16, 16]
+      cells_per_block: [3, 3]
       block_norm: "L2-Hys"
       transform_sqrt: true
 
@@ -130,12 +82,3 @@ classifier:
     n_jobs: -1
     degree: 5
 
-  # active: "random_forest"
-  # params:
-  #   n_estimators: 300
-  #   max_depth: 15
-  #   min_samples_split: 5
-  #   min_samples_leaf: 2
-  #   max_features: "sqrt"
-  #   class_weight: "balanced"
-  #   n_jobs: -1

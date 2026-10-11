@@ -1,9 +1,9 @@
 import argparse
+from contextlib import contextmanager
 import json
 import sys
-import time
-from contextlib import contextmanager
 from pathlib import Path
+import time
 
 import dotenv
 import matplotlib
