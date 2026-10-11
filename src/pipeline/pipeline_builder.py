@@ -115,8 +115,8 @@ def build_pipeline(
     if classification and config.classifier:
         classifier_params = vars(config.classifier.params).copy()
 
-        if "random_state" not in classifier_params:
-            classifier_params["random_state"] = config.random_seed
+        # if "random_state" not in classifier_params:
+        #     classifier_params["random_state"] = config.random_seed
 
         classifier = ClassifierRegistry.create(
             config.classifier.active, **classifier_params

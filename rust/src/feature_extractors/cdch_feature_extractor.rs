@@ -16,7 +16,7 @@ pub fn extract_cdch<'py>(
     let array = image.as_array();
     let (h, w) = (array.shape()[0], array.shape()[1]);
 
-    // 1. Center Calculation (Matches Python Visualizer logic)
+    // Center Calculation
     let (cx, cy) = if let (Some(x), Some(y)) = (center_x, center_y) {
         ((x * w as f64).round() as i32, (y * h as f64).round() as i32)
     } else {
@@ -43,10 +43,8 @@ pub fn extract_cdch<'py>(
         .collect();
     let num_rays = angles_deg.len();
 
-    // Correct range calculation to avoid u8 overflow
     let range = (max_val as usize).saturating_sub(min_val as usize) + 1;
 
-    // 2. Parallel Processing
     let ray_hists: Vec<Vec<f64>> = angles_deg
         .into_par_iter()
         .map(|angle_deg| {
@@ -62,7 +60,6 @@ pub fn extract_cdch<'py>(
                 if px >= 0 && px < w as i32 && py >= 0 && py < h as i32 {
                     let p = array[[py as usize, px as usize]];
                     if p >= min_val && p <= max_val {
-                        // Correct quantization relative to min_val
                         let bin_idx = (((p - min_val) as usize * bins) / range).min(bins - 1);
                         counts[bin_idx] += 1;
                         total_valid += 1;
@@ -82,11 +79,10 @@ pub fn extract_cdch<'py>(
         })
         .collect();
 
-    // 3. Matrix Construction (Matching np.rot90 logic)
+    // Matrix Construction
     let mut out_array = Array2::<f64>::zeros((bins, num_rays));
     for i in 0..num_rays {
         for j in 0..bins {
-            // Rotates so that indices 0 of bins are at the bottom for visualization
             out_array[[bins - 1 - j, i]] = ray_hists[i][j];
         }
     }

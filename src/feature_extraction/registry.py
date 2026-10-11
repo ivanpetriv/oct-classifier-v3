@@ -2,13 +2,16 @@ from typing import Any
 
 from feature_extraction.base_feature_extractor import BaseFeaturesExtractor
 from feature_extraction.extractors.cdch_feature_extractor import CdchFeaturesExtractor
-from feature_extraction.extractors.ldch_feature_extractor import LdchFeaturesExtractor
 from feature_extraction.extractors.hog_feature_extractor import HogFeaturesExtractor
 from feature_extraction.extractors.lbp_feature_extractor import LbpFeaturesExtractor
+from feature_extraction.extractors.ldch_feature_extractor import LdchFeaturesExtractor
 from feature_extraction.extractors.rc_ldch_feature_extractor import (
     RcLdchFeaturesExtractor,
 )
 from feature_extraction.extractors.rdch_feature_extractor import RdchFeaturesExtractor
+from feature_extraction.extractors.ldch_py_feature_extractor import (
+    LdchPyFeaturesExtractor,
+)
 
 
 class FeatureExtractorRegistry:
@@ -19,6 +22,7 @@ class FeatureExtractorRegistry:
     _registry: dict[str, type[BaseFeaturesExtractor]] = {
         "cdch": CdchFeaturesExtractor,
         "ldch": LdchFeaturesExtractor,
+        "ldch_py": LdchPyFeaturesExtractor,
         "rdch": RdchFeaturesExtractor,
         "lbp": LbpFeaturesExtractor,
         "hog": HogFeaturesExtractor,

@@ -23,25 +23,32 @@ class OctDataset:
     def __init__(
         self,
         dataset_path: Path,
-        allowed_classes: list[str],
+        allowed_classes: list[str] | dict[str, str],
         samples_per_class: int | None = None,
         preprocessor: PreprocessingPipeline | None = None,
     ):
-        """Initializes the datsset.
+        """Initializes the dataset.
 
         Args:
-            dataset_path (Path): Path to the dataset. Must contain disease subfolders, and each subfolder contains images.
-            allowed_classes (list[str]): Classes to load.
-            samples_per_class (int | None, optional): How many items per disease. Defaults to None.
-            preprocessor (PreprocessingPipeline | None, optional): Image preprocessor. Defaults to None.
+            dataset_path (Path): Path to the dataset. Must contain disease subfolders.
+            allowed_classes (list[str] | dict[str, str]): Classes to load.
+                If a list, maps 1:1.
+                If a dict, maps physical directory names to logical class names.
+            samples_per_class (int | None, optional): How many items per logical class.
+            preprocessor (PreprocessingPipeline | None, optional): Image preprocessor.
         """
         self.path = dataset_path
-        self.allowed_classes = allowed_classes
         self.samples_per_class = samples_per_class
         self.preprocessor = preprocessor
 
-        # Maps disease names to numbers
-        self.class_mapping = {c: i for i, c in enumerate(self.allowed_classes)}
+        if isinstance(allowed_classes, list):
+            self.dir_to_logical = {c: c for c in allowed_classes}
+        else:
+            self.dir_to_logical = allowed_classes
+
+        self.logical_classes = sorted(list(set(self.dir_to_logical.values())))
+
+        self.class_mapping = {c: i for i, c in enumerate(self.logical_classes)}
 
         (
             self.image_paths,
@@ -63,34 +70,72 @@ class OctDataset:
     def _index_dataset(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Returns image path, label index, class name, patient id.
+        Pools directories into logical classes, then uses round-robin sampling
+        to guarantee maximum patient variance across the combined data.
         """
         image_paths: list[Path] = []
         labels: list[int] = []
         class_names: list[str] = []
         patient_ids: list[str] = []
 
-        for class_name, label_idx in self.class_mapping.items():
-            class_dir = self.path / class_name
+        # Structure: { logical_class: { patient_id: [path1, path2...] } }
+        logical_to_patients: dict[str, dict[str, list[Path]]] = {
+            c: {} for c in self.logical_classes
+        }
+
+        for dir_name, logical_class in self.dir_to_logical.items():
+            class_dir = self.path / dir_name
             if not class_dir.exists():
                 print(f"Warning: Disease directory '{class_dir}' does not exist.")
                 continue
 
-            valid_samples = 0
             for image_path in sorted(class_dir.iterdir()):
                 if image_path.suffix.lower() not in self.allowed_image_extensions:
                     continue
+
+                patient_id = self._extract_patient_id(image_path)
+
+                # Group under the logical class
+                patient_dict = logical_to_patients[logical_class]
+                if patient_id not in patient_dict:
+                    patient_dict[patient_id] = []
+                patient_dict[patient_id].append(image_path)
+
+        # Execute Round-Robin Extraction per Logical Class
+        for logical_class in self.logical_classes:
+            label_idx = self.class_mapping[logical_class]
+            patient_to_images = logical_to_patients[logical_class]
+
+            valid_samples = 0
+            active_patients = list(patient_to_images.keys())
+
+            while active_patients:
                 if (
                     self.samples_per_class is not None
                     and valid_samples >= self.samples_per_class
                 ):
                     break
 
-                image_paths.append(image_path)
-                labels.append(label_idx)
-                class_names.append(class_name)
-                patient_ids.append(self._extract_patient_id(image_path))
+                for patient_id in list(active_patients):
+                    if (
+                        self.samples_per_class is not None
+                        and valid_samples >= self.samples_per_class
+                    ):
+                        break
 
-                valid_samples += 1
+                    # Extract the next available image for this patient
+                    img_path = patient_to_images[patient_id].pop(0)
+
+                    image_paths.append(img_path)
+                    labels.append(label_idx)
+                    class_names.append(logical_class)
+                    patient_ids.append(patient_id)
+
+                    valid_samples += 1
+
+                    # Remove the patient from the rotation if out of images
+                    if not patient_to_images[patient_id]:
+                        active_patients.remove(patient_id)
 
         return (
             np.array(image_paths),
@@ -116,24 +161,20 @@ class OctDataset:
     def _process_concurrently(
         self, paths: np.ndarray, labels: np.ndarray, classes: np.ndarray
     ):
-        """Handles threading and yields results as they complete, completely blind to the UI."""
+        """Handles threading and yields results as they complete."""
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_to_img = {
                 executor.submit(self._process_image, p, l, c): p
                 for p, l, c in zip(paths, labels, classes)
             }
 
-            for future, val in future_to_img.items():
-                try:
-                    yield future.result(), None
-                except Exception as e:
-                    yield None, (val, e)
+            for future in concurrent.futures.as_completed(future_to_img):
+                yield future.result()
 
     def get_batch(
         self, indices: np.ndarray, description: str = "Loading Data"
     ) -> tuple[np.ndarray, np.ndarray]:
         """Loads and processes the images for the given indices concurrently."""
-        # This method only has rich progress bar.
 
         paths = self.image_paths[indices]
         labels = self.labels[indices]
@@ -155,19 +196,15 @@ class OctDataset:
             )
             current_displayed_class = ""
 
-            for result, error in self._process_concurrently(paths, labels, classes):
-                if error is not None:
-                    path, e = error
-                    progress.console.print(f"[red]Failed to process {path.name}: {e}")
-                elif result is not None:
-                    image_array, label_idx, class_name = result
+            for image_array, label_idx, class_name in self._process_concurrently(
+                paths, labels, classes
+            ):
+                if class_name != current_displayed_class:
+                    progress.update(task, current_class=f"({class_name})")
+                    current_displayed_class = class_name
 
-                    if class_name != current_displayed_class:
-                        progress.update(task, current_class=f"({class_name})")
-                        current_displayed_class = class_name
-
-                    X_data.append(image_array)
-                    y_data.append(label_idx)
+                X_data.append(image_array)
+                y_data.append(label_idx)
 
                 progress.advance(task)
 

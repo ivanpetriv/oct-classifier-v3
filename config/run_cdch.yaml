@@ -1,0 +1,139 @@
+# yaml-language-server: $schema=./run_schema.json
+random_seed: 42
+
+# feature_ravelli_aaa_v? - rcldch
+# feature_ravelli_plushog_v3 - rcldch + hog
+# feature_ravelli_cdch_v? - cdch
+# feature_ravelli_rdch_v? - rdch
+# ?? - ldch alone (row)
+# feature_ravelli_all_v? - ldch, cdch, lbp, hog
+
+# Try to remove drusen
+
+paths:
+  normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/"
+  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli/train_preprocessed"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/OCTDL"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/train"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/C8/train/"
+  cache: "cache"
+  model_output: "models"
+
+dataset:
+  classes: ["NORMAL", "CNV", "DRUSEN", "DME"]
+  # classes:
+  #   NORMAL: "IDK"
+  #   CNV: "CNV"
+  #   DRUSEN: "IDK"
+  #   DME: "DME"
+  # classes: ["NORMAL", "DRUSEN"]
+  # classes: [ "NORMAL", "CNV", "DRUSEN", "DME", "AMD", "CSR", "DR", "MH" ]
+  # classes: ["NO", "AMD", "DME", "ERM", "RAO", "RVO", "VID"]
+  # classes: ["NO", "AMD", "VID", "ERM"]
+  samples_per_class: 3000
+  sampling_proportions:
+    train: 80
+    val: 10
+    test: 10
+
+preprocessing_pipeline:
+  - cropper:
+      top: 8
+      bottom: 8
+      left: 8
+      right: 8
+  - corner_artifact_remover:
+      min_threshold: 217
+  - dwt_denoiser:
+      method: "VisuShrink"
+      wavelet: "sym2"
+      mode: "soft"
+      wavelet_levels: 1
+      rescale_sigma: false
+
+  - rpe_roi_aligner:
+      roi_above: 137
+      roi_below: 51
+      blur_sigma: 6
+      max_jump: 10
+      poly_degree: 6
+
+  # - clahe_filter:
+  #     clip_limit: 10
+  #     tile_grid_size: [8, 8]
+  - resizer:
+      target_size: [256, 120]
+
+feature_extractor:
+  # - rcldch:
+  #     sections: 128
+  #     pixel_range: [ 10, 228 ]
+  #     bins: 128
+  # - ldch:
+  #     sections: 32
+  #     layout: "row"
+  #     pixel_range: [28, 235]
+  #     bins: 192
+  # - ldch:
+  #     sections: 32
+  #     layout: "col"
+  #     pixel_range: [3, 253]
+  #     bins: 128
+  # - cdch:
+  #     angle_step: 5
+  #     center: [0.44, 0.55]
+  #     pixel_range: [30, 222]
+  #     bins: 256
+  - cdch:
+      angle_step: 1
+      center: [0.5, 0.5]
+      pixel_range: [0, 255]
+      bins: 256
+  # - rdch:
+  #     ring_step: 10
+  #     center: [0.5, 0.5]
+  #     pixel_range: [ 29, 234 ]
+  #     bins: 256
+  # - lbp:
+  #     n_points: 8             # Number of circularly symmetric neighbor set points
+  #     radius: 1               # Radius of circle
+  #     method: "uniform"       # Standard method for rotational invariance
+  #     norm: "l2"
+  #     padding_threshold: 0
+  # - hog:
+  #     orientations: 20         # Standard number of gradient direction bins
+  #     pixels_per_cell: [12, 12]      # Evaluates an 8x8 pixel block
+  #     cells_per_block: [2, 2]      # Normalizes across a 2x2 block of cells
+  #     block_norm: "L2-Hys"
+
+dimensionality_reduction:
+  active: "pca"
+  params:
+    n_components: 87
+    whiten: false
+    svd_solver: "randomized"
+    random_state: 42
+    iterated_power: 3
+    power_iteration_normalizer: "LU"
+
+classifier:
+  active: "svm"
+  params:
+    kernel: "rbf"
+    C: 1.9179538838424386
+    gamma: 2.3558479236930363e-05
+    class_weight: "balanced"
+    probability: true
+    shrinking: false
+    n_jobs: 1
+    degree: 5
+
+  # active: "random_forest"
+  # params:
+  #   n_estimators: 300
+  #   max_depth: 15
+  #   min_samples_split: 5
+  #   min_samples_leaf: 2
+  #   max_features: "sqrt"
+  #   class_weight: "balanced"
+  #   n_jobs: -1

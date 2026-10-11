@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,7 +23,6 @@ class Trainer:
             True,
         )
         self.pipeline.fit(X_train, y_train)
-        self._analyze_pca()
 
     def predict(self, X_val: np.ndarray) -> np.ndarray:
         """Generates predictions using the trained pipeline."""
@@ -28,34 +30,12 @@ class Trainer:
             raise RuntimeError("Cannot predict before training the pipeline.")
         return self.pipeline.predict(X_val)
 
-    def _analyze_pca(self) -> None:
-        """Inspects the dimensionality reduction step after fitting."""
-        if (
-            self.pipeline is None
-            or "dimensionality_reduction" not in self.pipeline.named_steps
-        ):
-            return
+    def save(self, file_path: str | Path) -> None:
+        """Serializes and saves the trained pipeline to disk."""
+        if self.pipeline is None:
+            raise RuntimeError("Cannot save an untrained pipeline.")
 
-        pca_step = self.pipeline.named_steps["dimensionality_reduction"]
+        path_obj = Path(file_path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-        if hasattr(pca_step, "explained_variance_ratio_"):
-            cumsum_var = np.cumsum(pca_step.explained_variance_ratio_)
-
-            print("\n=== PCA Variance Analysis ===")
-            print(
-                f"Variance in {pca_step.n_components} components: {cumsum_var[-1]:.1%}"
-            )
-
-            for threshold in [0.8, 0.9, 0.95]:
-                n_comp_needed = np.argmax(cumsum_var >= threshold) + 1
-                print(f"Components for {threshold:.0%} variance: {n_comp_needed}")
-
-            plt.figure(figsize=(10, 5))
-            plt.plot(cumsum_var[:200])
-            plt.axhline(y=0.95, color="r", linestyle="--", label="95% threshold")
-            plt.xlabel("PCA Components")
-            plt.ylabel("Cumulative Variance Explained")
-            plt.title("PCA Variance Profile")
-            plt.legend()
-            plt.savefig("pca_variance.png")
-            plt.close()
+        joblib.dump(self.pipeline, str(path_obj))

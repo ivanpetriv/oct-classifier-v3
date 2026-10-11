@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=./run_schema.json
+
+random_seed: 42
+
+paths:
+  normalized_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli/train"
+  original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/OCTDL"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/Ravelli-normalized-v2/train"
+  # original_dataset: "/run/media/ivan/01DCA2451BEF4120/LPNU/University/masters/Thesis/C8/train/"
+  cache: "cache"
+  model_output: "models"
+
+dataset:
+  # classes: [ "NORMAL", "CNV", "DRUSEN", "DME" ]
+  # classes: [ "NORMAL", "CNV", "DRUSEN", "DME", "AMD", "CSR", "DR", "MH" ]
+  # classes: ["NO", "AMD", "DME", "ERM", "RAO", "RVO", "VID"]
+  classes: ["NO", "AMD", "VID", "ERM"]
+  samples_per_class: 100
+  sampling_proportions:
+    train: 80
+    val: 10
+    test: 10
+
+preprocessing_pipeline:
+  - rpe_aligner:
+      blur_sigma: 2
+      poly_degree: 3
+      max_jump: 5
+
+  - dwt_denoiser:
+      wavelet: "db2"
+      mode: "soft"
+      wavelet_levels: 2
+      method: "BayesShrink"
+      rescale_sigma: true
+
+  - resizer:
+      target_size: [256, 256]
+
+  - corner_artifact_remover:
+      min_threshold: 240
+
+feature_extractor:
+  - ldch:
+      sections: 64
+      bins: 128
+      pixel_range: [0, 255]
+      layout: "row"
+
+dimensionality_reduction:
+  active: pca
+  params:
+    n_components: 128
+    whiten: false
+    svd_solver: randomized
+    iterated_power: 4
+    power_iteration_normalizer: auto
+
+classifier:
+  active: svm
+  params:
+    kernel: linear
+    C: 1.0
+    class_weight: balanced
+    shrinking: true
+    random_state: 42
+    max_iter: 2000

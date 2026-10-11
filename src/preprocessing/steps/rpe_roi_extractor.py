@@ -6,152 +6,87 @@ from preprocessing.preprocessing_step import PreprocessingStep
 
 
 class RpeRoiExtractor(PreprocessingStep):
-    """
-    Extracts a fixed-height ROI around the detected RPE.
-
-    Unlike RpeAligner, this does not vertically shift individual columns.
-    The natural curvature of the retina is therefore preserved.
-    """
-
     def __init__(
         self,
-        roi_above: int = 80,
-        roi_below: int = 40,
-        blur_sigma: int = 3,
-        max_jump: int = 5,
+        roi_above: int,
+        roi_below: int,
+        blur_sigma: int,
+        max_jump: int,
+        poly_degree: int,
     ) -> None:
         self.roi_above = roi_above
         self.roi_below = roi_below
         self.blur_sigma = blur_sigma
         self.max_jump = max_jump
+        self.poly_degree = poly_degree
 
     def preprocess(
         self,
         image: NDArray[np.uint8],
     ) -> NDArray[np.uint8]:
         h, w = image.shape
-
-        # ---------------------------------------------------------
-        # 1. Smooth image for RPE detection
-        # ---------------------------------------------------------
-
+        # Smooth image
         if self.blur_sigma > 0:
             trace_image = gaussian_filter(
-                image,
-                sigma=self.blur_sigma,
+                image.astype(np.float32), sigma=self.blur_sigma
             )
         else:
-            trace_image = image
+            trace_image = image.astype(np.float32)
 
-        # ---------------------------------------------------------
-        # 2. Find initial RPE anchor
-        # ---------------------------------------------------------
+        # Bottom-weighting
+        weights = (np.linspace(0.1, 1.0, h) ** 2).reshape(h, 1)
+        weighted_image = trace_image * weights
 
-        max_intensities = np.max(
-            trace_image,
-            axis=0,
-        )
-
+        max_intensities = np.max(weighted_image, axis=0)
         anchor_x = int(np.argmax(max_intensities))
-        anchor_y = int(np.argmax(trace_image[:, anchor_x]))
+        anchor_y = int(np.argmax(weighted_image[:, anchor_x]))
 
-        rpe_depths = np.zeros(
-            w,
-            dtype=np.int32,
-        )
+        raw_depths = np.zeros(w, dtype=np.int32)
+        raw_depths[anchor_x] = anchor_y
 
-        rpe_depths[anchor_x] = anchor_y
-
-        # ---------------------------------------------------------
-        # 3. Trace RPE to the right
-        # ---------------------------------------------------------
-
+        # Trace right and left
         current_y = anchor_y
-
         for x in range(anchor_x + 1, w):
-            y_min = max(
-                0,
-                current_y - self.max_jump,
-            )
+            y_min = max(0, current_y - self.max_jump)
+            y_max = min(h, current_y + self.max_jump + 1)
+            window = trace_image[y_min:y_max, x]
 
-            y_max = min(
-                h,
-                current_y + self.max_jump + 1,
-            )
-
-            window = trace_image[
-                y_min:y_max,
-                x,
-            ]
-
-            current_y = y_min + int(np.argmax(window))
-
-            rpe_depths[x] = current_y
-
-        # ---------------------------------------------------------
-        # 4. Trace RPE to the left
-        # ---------------------------------------------------------
+            if np.max(window) > 10.0:
+                current_y = y_min + int(np.argmax(window))
+            raw_depths[x] = current_y
 
         current_y = anchor_y
-
         for x in range(anchor_x - 1, -1, -1):
-            y_min = max(
-                0,
-                current_y - self.max_jump,
-            )
+            y_min = max(0, current_y - self.max_jump)
+            y_max = min(h, current_y + self.max_jump + 1)
+            window = trace_image[y_min:y_max, x]
 
-            y_max = min(
-                h,
-                current_y + self.max_jump + 1,
-            )
+            if np.max(window) > 10.0:
+                current_y = y_min + int(np.argmax(window))
+            raw_depths[x] = current_y
 
-            window = trace_image[
-                y_min:y_max,
-                x,
-            ]
+        x_coords = np.arange(w)
+        poly_coeffs = np.polyfit(x_coords, raw_depths, self.poly_degree)
+        poly_func = np.poly1d(poly_coeffs)
 
-            current_y = y_min + int(np.argmax(window))
+        rpe_depths = np.clip(poly_func(x_coords), 0, h - 1).astype(np.int32)
 
-            rpe_depths[x] = current_y
-
-        # ---------------------------------------------------------
-        # 5. Extract ROI around RPE
-        # ---------------------------------------------------------
-
+        # Extract ROI
         roi_height = self.roi_above + self.roi_below
-
-        roi = np.zeros(
-            (roi_height, w),
-            dtype=np.uint8,
-        )
+        roi = np.zeros((roi_height, w), dtype=np.uint8)
 
         for x in range(w):
             rpe_y = rpe_depths[x]
-
             src_start = rpe_y - self.roi_above
             src_end = rpe_y + self.roi_below
 
-            # Clip source coordinates to image boundaries.
-            src_start_clipped = max(
-                0,
-                src_start,
-            )
+            src_start_clipped = max(0, min(h, src_start))
+            src_end_clipped = max(0, min(h, src_end))
 
-            src_end_clipped = min(
-                h,
-                src_end,
-            )
-
-            # Corresponding destination coordinates.
             dst_start = src_start_clipped - src_start
             dst_end = dst_start + (src_end_clipped - src_start_clipped)
 
-            roi[
-                dst_start:dst_end,
-                x,
-            ] = image[
-                src_start_clipped:src_end_clipped,
-                x,
-            ]
+            if src_start_clipped < src_end_clipped:
+                roi[dst_start:dst_end, x] = image[src_start_clipped:src_end_clipped, x]
 
         return roi

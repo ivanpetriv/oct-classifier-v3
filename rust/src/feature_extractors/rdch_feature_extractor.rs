@@ -16,7 +16,6 @@ pub fn extract_rdch<'py>(
     let array = image.as_array();
     let (h, w) = (array.shape()[0], array.shape()[1]);
 
-    // 1. Determine Absolute Center (Casted to f64 for distance precision)
     let (cx, cy) = if let (Some(x), Some(y)) = (center_x, center_y) {
         (x * w as f64, y * h as f64)
     } else {
@@ -35,7 +34,6 @@ pub fn extract_rdch<'py>(
         }
     };
 
-    // 2. Calculate max radius and required rings
     let corners = [
         (0.0, 0.0),
         (w as f64, 0.0),
@@ -50,8 +48,7 @@ pub fn extract_rdch<'py>(
     let num_rings = ((max_radius / ring_step).ceil() as usize).max(1);
     let range = (max_val as usize).saturating_sub(min_val as usize) + 1;
 
-    // 3. Single-pass binning into a flat atomic-friendly buffer
-    // To parallelize the histogram build, we use a 1D vector representing (rings * bins)
+
     let mut ring_counts = vec![0usize; num_rings * bins];
     let mut ring_totals = vec![0usize; num_rings];
 
@@ -67,7 +64,6 @@ pub fn extract_rdch<'py>(
         }
     }
 
-    // 4. Parallelize normalization and cumulative sum calculation
     let hists: Vec<Vec<f64>> = (0..num_rings)
         .into_par_iter()
         .map(|r_idx| {
@@ -86,9 +82,6 @@ pub fn extract_rdch<'py>(
         })
         .collect();
 
-    // 5. Construct Output (Returning raw matrix: shape [num_rings, bins])
-    // If you need the rotation for visualization, keep the nested loop;
-    // otherwise, this is the most efficient representation.
     let mut out_array = Array2::<f64>::zeros((num_rings, bins));
     for (i, ring_data) in hists.into_iter().enumerate() {
         for (j, val) in ring_data.into_iter().enumerate() {

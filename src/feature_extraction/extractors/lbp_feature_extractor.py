@@ -26,12 +26,20 @@ class LbpFeaturesExtractor(BaseFeaturesExtractor):
         self.norm = norm
         self.padding_threshold = padding_threshold
 
-        if self.method == 'uniform':
+        if self.method == "uniform":
             self.num_bins = self.n_points + 2
+        elif self.method == "nri_uniform":
+            self.num_bins = self.n_points * (self.n_points - 1) + 3
         else:
-            self.num_bins = 2 ** self.n_points
-    
-    
+            self.num_bins = 2**self.n_points
+
+            if self.num_bins > 10000:
+                raise ValueError(
+                    f"Configuration n_points={self.n_points} with method='{self.method}' "
+                    f"creates {self.num_bins} bins, which will exceed memory limits. "
+                    "Use 'uniform' or 'nri_uniform' for high n_points."
+                )
+
     def extract(self, image: np.ndarray) -> np.ndarray:
         """
         Extracts the LBP feature vector from the image.
@@ -56,8 +64,18 @@ class LbpFeaturesExtractor(BaseFeaturesExtractor):
                 valid_lbp_values,
                 bins=self.num_bins,
                 range=(0, self.num_bins),
-                density=True,
+                density=False,
             )
+            hist = hist.astype(np.float64)
+
+            hist_sum = np.sum(hist)
+            if hist_sum > 0:
+                if self.norm == "l1":
+                    hist /= hist_sum
+                elif self.norm == "l2":
+                    hist /= np.sqrt(np.sum(hist**2))
+                else:
+                    raise ValueError(f"Unknown normalization method: {self.norm}")
         else:
             hist = np.zeros(self.num_bins, dtype=np.float64)
 

@@ -10,4 +10,4 @@ class Resizer(PreprocessingStep):
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         """ """
-        return cv2.resize(image, self.target_size, interpolation=cv2.INTER_LINEAR)
+        return cv2.resize(image, self.target_size, interpolation=cv2.INTER_LANCZOS4)

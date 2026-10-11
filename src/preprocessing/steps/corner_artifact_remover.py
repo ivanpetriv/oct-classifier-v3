@@ -9,12 +9,14 @@ class CornerArtifactRemover(PreprocessingStep):
     def __init__(
         self,
         min_threshold: int,
-        approximation_epsilon: float = 0.02,
-        max_area_ratio: float = 0.15,
+        approximation_epsilon: float = 0.01,
+        max_area_ratio: float = 0.50,
+        ksize: tuple[int, int] = (5, 5),
     ) -> None:
         self.min_threshold = min_threshold
         self.approximation_epsilon = approximation_epsilon
         self.max_area_ratio = max_area_ratio
+        self.ksize = ksize
 
     def preprocess(
         self,
@@ -46,13 +48,11 @@ class CornerArtifactRemover(PreprocessingStep):
         for contour in contours:
             area = cv2.contourArea(contour)
 
-            # Removed the `area == 0` check so thin vertical lines are not skipped
             if area > image_area * self.max_area_ratio:
                 continue
 
             perimeter = cv2.arcLength(contour, True)
 
-            # Avoid division by zero or errors if the perimeter is exceptionally small
             if perimeter == 0:
                 continue
 
@@ -62,7 +62,6 @@ class CornerArtifactRemover(PreprocessingStep):
                 True,
             )
 
-            # Added 2 to account for 1D line segments on the edges
             if len(polygon) not in (2, 3, 4, 5):
                 continue
 
@@ -87,7 +86,6 @@ class CornerArtifactRemover(PreprocessingStep):
                 255,
                 thickness=cv2.FILLED,
             )
-            # Draw lines specifically for 2-point contours (thickness is needed since filled doesn't work on 1D lines)
             if len(polygon) == 2:
                 cv2.drawContours(
                     removal_mask,
@@ -97,8 +95,7 @@ class CornerArtifactRemover(PreprocessingStep):
                     thickness=2,
                 )
 
-        # Dilate the mask slightly to catch the anti-aliased gradient edges of the white artifacts
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, self.ksize)
         removal_mask = cv2.dilate(removal_mask, kernel, iterations=1)
 
         image[removal_mask > 0] = 0

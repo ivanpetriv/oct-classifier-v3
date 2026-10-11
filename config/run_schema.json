@@ -21,11 +21,21 @@
         "Dataset": {
             "properties": {
                 "classes": {
-                    "items": {
-                        "type": "string"
-                    },
-                    "title": "Classes",
-                    "type": "array"
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "type": "object"
+                        }
+                    ],
+                    "title": "Classes"
                 },
                 "samples_per_class": {
                     "exclusiveMinimum": 0,
@@ -42,6 +52,51 @@
                 "sampling_proportions"
             ],
             "title": "Dataset",
+            "type": "object"
+        },
+        "DwtDenoiserConfig": {
+            "properties": {
+                "wavelet": {
+                    "title": "Wavelet",
+                    "type": "string"
+                },
+                "mode": {
+                    "title": "Mode",
+                    "type": "string"
+                },
+                "wavelet_levels": {
+                    "title": "Wavelet Levels",
+                    "type": "integer"
+                },
+                "method": {
+                    "default": "BayesShrink",
+                    "title": "Method",
+                    "type": "string"
+                },
+                "rescale_sigma": {
+                    "default": false,
+                    "title": "Rescale Sigma",
+                    "type": "boolean"
+                },
+                "channel_axis": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Channel Axis"
+                }
+            },
+            "required": [
+                "wavelet",
+                "mode",
+                "wavelet_levels"
+            ],
+            "title": "DwtDenoiserConfig",
             "type": "object"
         },
         "HOGConfig": {
@@ -135,6 +190,12 @@
                     "anyOf": [
                         {
                             "type": "string"
+                        },
+                        {
+                            "additionalProperties": {
+                                "type": "integer"
+                            },
+                            "type": "object"
                         },
                         {
                             "type": "null"
@@ -257,6 +318,12 @@
                             "type": "string"
                         },
                         {
+                            "additionalProperties": {
+                                "type": "integer"
+                            },
+                            "type": "object"
+                        },
+                        {
                             "type": "null"
                         }
                     ],
@@ -360,6 +427,12 @@
                             "type": "string"
                         },
                         {
+                            "additionalProperties": {
+                                "type": "integer"
+                            },
+                            "type": "object"
+                        },
+                        {
                             "type": "null"
                         }
                     ],
@@ -374,6 +447,85 @@
                 "class_weight"
             ],
             "title": "RbfParams",
+            "type": "object"
+        },
+        "ResizerConfig": {
+            "properties": {
+                "target_size": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "integer"
+                        }
+                    ],
+                    "title": "Target Size",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "target_size"
+            ],
+            "title": "ResizerConfig",
+            "type": "object"
+        },
+        "RpeAlignerConfig": {
+            "properties": {
+                "blur_sigma": {
+                    "title": "Blur Sigma",
+                    "type": "integer"
+                },
+                "poly_degree": {
+                    "title": "Poly Degree",
+                    "type": "integer"
+                },
+                "max_jump": {
+                    "title": "Max Jump",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "blur_sigma",
+                "poly_degree",
+                "max_jump"
+            ],
+            "title": "RpeAlignerConfig",
+            "type": "object"
+        },
+        "RpeRoiExtractorConfig": {
+            "properties": {
+                "roi_above": {
+                    "title": "Roi Above",
+                    "type": "integer"
+                },
+                "roi_below": {
+                    "title": "Roi Below",
+                    "type": "integer"
+                },
+                "blur_sigma": {
+                    "title": "Blur Sigma",
+                    "type": "integer"
+                },
+                "max_jump": {
+                    "title": "Max Jump",
+                    "type": "integer"
+                },
+                "poly_degree": {
+                    "title": "Poly Degree",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "roi_above",
+                "roi_below",
+                "blur_sigma",
+                "max_jump",
+                "poly_degree"
+            ],
+            "title": "RpeRoiExtractorConfig",
             "type": "object"
         },
         "SVMConfig": {
@@ -965,8 +1117,24 @@
         "preprocessing_pipeline": {
             "items": {
                 "additionalProperties": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/DwtDenoiserConfig"
+                        },
+                        {
+                            "$ref": "#/$defs/ResizerConfig"
+                        },
+                        {
+                            "$ref": "#/$defs/RpeAlignerConfig"
+                        },
+                        {
+                            "$ref": "#/$defs/RpeRoiExtractorConfig"
+                        },
+                        {
+                            "additionalProperties": true,
+                            "type": "object"
+                        }
+                    ]
                 },
                 "type": "object"
             },

@@ -15,7 +15,7 @@ class HogFeaturesExtractor(BaseFeaturesExtractor):
         orientations: int,
         pixels_per_cell: tuple[int, int],
         cells_per_block: tuple[int, int],
-        block_norm,
+        block_norm: str,
         transform_sqrt: bool = False,
     ):
         """

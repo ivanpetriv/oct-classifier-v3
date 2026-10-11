@@ -22,10 +22,8 @@ pub fn extract_ldch<'py>(
     let base_size = total_dim / sections;
     let remainder = total_dim % sections;
 
-    // Pre-calculate safe range to avoid u8 overflow
     let range = (pixel_max as usize).saturating_sub(pixel_min as usize) + 1;
 
-    // Parallelize across the sections
     let hists: Vec<Vec<f64>> = (0..sections)
         .into_par_iter()
         .map(|i| {
@@ -67,7 +65,6 @@ pub fn extract_ldch<'py>(
         })
         .collect();
 
-    // Construct the final Array2 (sections, bins) without rotation
     let mut out_array = Array2::<f64>::zeros((sections, bins));
     for (i, row_data) in hists.into_iter().enumerate() {
         for (j, val) in row_data.into_iter().enumerate() {

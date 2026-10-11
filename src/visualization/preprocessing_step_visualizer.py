@@ -26,7 +26,15 @@ class PreprocessingStepsVisualizer:
         predicted_class: str | None = None,
         actual_class: str | None = None,
         confidence: float | None = None,
+        font_scale: float = 1.0,
     ):
+        """
+        font_scale multiplies every font size (1.0 = large default).
+        """
+
+        def s(size: float) -> float:
+            return size * font_scale
+
         image = image.copy()
 
         image_stages: dict[str, np.ndarray] = {}
@@ -45,7 +53,7 @@ class PreprocessingStepsVisualizer:
             fig, axes = plt.subplots(
                 1,
                 n_stages,
-                figsize=(4 * n_stages, 4),
+                figsize=(5.5 * n_stages, 6),
             )
 
             # Make axes iterable when there is only one stage.
@@ -73,19 +81,21 @@ class PreprocessingStepsVisualizer:
 
                 ax.set_title(
                     title,
-                    fontsize=12,
-                    pad=10,
+                    fontsize=s(22),
+                    pad=14,
                 )
                 ax.axis("off")
 
             # Add prediction and confidence to the plot title if provided
+            top = 1.0
             if predicted_class is not None:
                 title_str = f"Prediction: {predicted_class}, actually: {actual_class}"
                 if confidence is not None:
                     title_str += f" (Confidence: {confidence * 100:.1f}%)"
-                fig.suptitle(title_str, fontsize=16, fontweight="bold")
+                fig.suptitle(title_str, fontsize=s(28), fontweight="bold")
+                top = 0.90
 
-            plt.tight_layout()
+            plt.tight_layout(rect=(0.0, 0.0, 1.0, top))
 
             if save_path is not None:
                 plt.savefig(
@@ -132,6 +142,7 @@ class PreprocessingStepsVisualizer:
         save_path: str | None = None,
         model: Any | None = None,
         classes: list[str] | None = None,
+        font_scale: float = 1.0,
     ):
         """
         Selects a random image from the dataset and visualizes
@@ -168,8 +179,9 @@ class PreprocessingStepsVisualizer:
                 img_array,
                 save_path,
                 predicted_class=predicted_class,
-                actual_class=None,
+                actual_class=class_name,
                 confidence=confidence,
+                font_scale=font_scale,
             )
 
 

@@ -1,7 +1,7 @@
 import os
 import time
-from contextlib import contextmanager
 import tracemalloc
+from contextlib import contextmanager
 
 import psutil
 

@@ -1,3 +1,7 @@
+from datetime import datetime
+import json
+from pathlib import Path
+
 import numpy as np
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import StratifiedGroupKFold
@@ -69,6 +73,10 @@ class CrossValidationRunner:
         if verbose:
             self._evaluate_overall(all_val_targets, all_val_preds, len(folds_to_run))
 
+        self._save_run_data(
+            suffix="cv", verbose=verbose, targets=all_val_targets, preds=all_val_preds
+        )
+
         return float(overall_f1)
 
     def _run_single_fold(
@@ -136,3 +144,81 @@ class CrossValidationRunner:
             preds_arr,
             list(self.dataset.class_mapping.keys()),
         )
+
+    def train_final_model(self, verbose: bool = True) -> Trainer:
+        """
+        Bypasses cross-validation and trains a single model on 100% of the dataset.
+        Useful for generating the final production model after hyperparameter tuning.
+        """
+        if verbose:
+            print(
+                f"\n[Final Model Training]"
+                f"\nTraining on 100% of data ({len(self.dataset.labels)} samples)"
+            )
+
+        # Generate indices for the entire dataset
+        all_indices = np.arange(len(self.dataset.labels))
+
+        # Retrieve the full batch of data without splitting
+        X_all, y_all = self.dataset.get_batch(
+            all_indices, description="Full Dataset Train"
+        )
+
+        # Initialize and train the final model
+        trainer = Trainer(self.config)
+        trainer.train(X_all, y_all)
+
+        if verbose:
+            print("\nFinal model successfully trained on all data.")
+
+        # Save the final model configuration with timestamp
+        self._save_run_data(suffix="final_model", verbose=verbose)
+
+        return trainer
+
+    def _save_run_data(
+        self,
+        suffix: str,
+        verbose: bool,
+        targets: list | None = None,
+        preds: list | None = None,
+    ) -> None:
+        """Saves the configuration and results into a single, timestamped JSON file."""
+        output_dir = Path(self.config.paths.model_output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filepath = output_dir / f"run_{suffix}_{timestamp}.json"
+
+        # Safely extract configuration as a dictionary
+        if hasattr(self.config, "model_dump_json"):
+            config_dict = json.loads(self.config.model_dump_json())
+        else:
+            config_dict = self.config.__dict__
+
+        # Build the final payload
+        payload = {"timestamp": timestamp, "configuration": config_dict}
+
+        # If targets and preds are provided (e.g., during CV), append the results
+        if targets is not None and preds is not None:
+            target_names = (
+                list(self.dataset.class_mapping.keys())
+                if hasattr(self.dataset, "class_mapping")
+                else None
+            )
+            report_dict = classification_report(
+                targets,
+                preds,
+                target_names=target_names,
+                output_dict=True,
+                zero_division=0,
+            )
+            payload["results"] = report_dict
+
+        # Write to disk
+        with open(filepath, "w") as f:
+            json.dump(payload, f, indent=4, default=str)
+
+        if verbose:
+            print(f"Run data successfully saved to: {filepath}")

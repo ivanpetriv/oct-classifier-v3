@@ -1,8 +1,12 @@
 import argparse
 import json
 import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
+import dotenv
+import matplotlib
 import numpy as np
 from PIL import Image
 
@@ -14,6 +18,56 @@ from pipeline.inference import Inferrer
 from pipeline.test import Evaluator
 from preprocessing.registry import PreprocessingRegistry
 from visualization.feature_extractor_visualizer import FeatureExtractorVisualizer
+
+# matplotlib.use("Agg")
+
+dotenv.load_dotenv()
+
+
+@contextmanager
+def timed(label: str):
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        elapsed = time.perf_counter() - start
+        print(f"\n[{label}] elapsed: {elapsed:.2f}s ({elapsed / 60:.2f} min)")
+
+
+def launch_training_final(config: OctConfig):
+    """
+    Trains the final model on 100% of the dataset and saves it to the output path.
+    """
+    preprocessing = PreprocessingRegistry.create_pipeline(config.preprocessing_pipeline)
+
+    dataset = OctDataset(
+        dataset_path=config.paths.original_dataset,
+        allowed_classes=config.dataset.classes,
+        samples_per_class=config.dataset.samples_per_class,
+        # preprocessor=preprocessing,
+        preprocessor=None,
+    )
+
+    runner = CrossValidationRunner(
+        config=config,
+        dataset=dataset,
+        n_splits=2,  # Required by init, but ignored by train_final_model
+        random_state=config.random_seed,
+    )
+
+    trainer = runner.train_final_model(verbose=True)
+
+    # Save the model
+    output_dir = config.paths.model_output
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    model_path = (
+        output_dir
+        / f"model_{'_'.join(list(config.feature_extractor[0].keys()))}.joblib"
+    )
+    trainer.save(model_path)
+
+    print(f"\nFinal model saved to: {model_path}")
 
 
 def launch_training_kfold(
@@ -28,7 +82,8 @@ def launch_training_kfold(
         dataset_path=config.paths.original_dataset,
         allowed_classes=config.dataset.classes,
         samples_per_class=config.dataset.samples_per_class,
-        preprocessor=preprocessing,
+        # preprocessor=preprocessing,
+        preprocessor=None,
     )
 
     runner = CrossValidationRunner(
@@ -115,6 +170,11 @@ def main():
 
     subparsers = parser.add_subparsers(
         dest="command", help="Available commands", required=True
+    )
+
+    train_final_parser = subparsers.add_parser(
+        "train-final",
+        help="Trains the final production model on 100%% of the dataset.",
     )
 
     kfold_parser = subparsers.add_parser(
@@ -208,32 +268,39 @@ def main():
 
     print(args)
 
-    match args.command:
-        case "train-kfold":
-            launch_training_kfold(
-                config,
-                args.n_splits,
-                args.n_folds_to_train,
-                random_state=config.random_seed,
-            )
+    with timed(args.command):
+        match args.command:
+            case "train-final":
+                launch_training_final(config)
 
-        case "inference":
-            launch_inference(config, args.image, args.model)
+            case "train-kfold":
+                launch_training_kfold(
+                    config,
+                    args.n_splits,
+                    args.n_folds_to_train,
+                    random_state=config.random_seed,
+                )
 
-        case "test":
-            launch_test(config, args.test_dir, args.model)
+            case "inference":
+                launch_inference(config, args.image, args.model)
 
-        case "preprocess-dataset":
-            save_path = args.output if args.output else config.paths.normalized_dataset
-            launch_dataset_preprocessing(config, save_path)
+            case "test":
+                launch_test(config, args.test_dir, args.model)
 
-        case "visualize-features":
-            launch_feature_extracting_visualization(config, args.image)
+            case "preprocess-dataset":
+                save_path = (
+                    args.output if args.output else config.paths.normalized_dataset
+                )
+                launch_dataset_preprocessing(config, save_path)
 
-        case _:
-            parser.print_help()
-            sys.exit(1)
+            case "visualize-features":
+                launch_feature_extracting_visualization(config, args.image)
+
+            case _:
+                parser.print_help()
+                sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
+

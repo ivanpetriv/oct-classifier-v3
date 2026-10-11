@@ -8,8 +8,8 @@ from preprocessing.preprocessing_step import PreprocessingStep
 class RpeAligner(PreprocessingStep):
     def __init__(
         self,
-        blur_sigma: int = 3,
-        poly_degree: int = 5,
+        blur_sigma: int,
+        poly_degree: int,
         target_row: int | None = None,
         max_jump: int = 5,
     ):
@@ -22,19 +22,19 @@ class RpeAligner(PreprocessingStep):
         h, w = image.shape
         raw_rpe_depths = np.zeros(w, dtype=int)
 
-        # 1. Blur the image to reduce noise for the tracing logic
+        # Blur the image to reduce noise
         if self.blur_sigma > 0:
             trace_image = gaussian_filter(image, sigma=self.blur_sigma)
         else:
             trace_image = image
 
-        # 2. Find anchor on the smoothed image
+        # Find anchor on the smoothed image
         max_intensities = np.max(trace_image, axis=0)
         anchor_x = int(np.argmax(max_intensities))
         anchor_y = int(np.argmax(trace_image[:, anchor_x]))
         raw_rpe_depths[anchor_x] = anchor_y
 
-        # 3. Trace Right
+        # Trace Right
         current_y = anchor_y
         for x in range(anchor_x + 1, w):
             y_min = max(0, current_y - self.max_jump)  # Fixed wrap-around
@@ -45,7 +45,7 @@ class RpeAligner(PreprocessingStep):
             current_y = y_min + local_max_idx
             raw_rpe_depths[x] = current_y
 
-        # 4. Trace Left
+        # Trace Left
         current_y = anchor_y
         for x in range(anchor_x - 1, -1, -1):
             y_min = max(0, current_y - self.max_jump)  # Fixed wrap-around
@@ -56,12 +56,12 @@ class RpeAligner(PreprocessingStep):
             current_y = y_min + local_max_idx
             raw_rpe_depths[x] = current_y
 
-        # 5. Fit polynomial
+        # Fit polynomial
         x_coords = np.arange(w)
         poly_coeffs = np.polyfit(x_coords, raw_rpe_depths, self.poly_degree)
         poly_function = np.poly1d(poly_coeffs)
 
-        # 6. Generate smooth curve
+        # Generate smooth curve
         smoothed_rpe_depths = np.round(poly_function(x_coords)).astype(int)
 
         # Bound the smoothed depths to image dimensions to prevent shift errors
@@ -70,7 +70,7 @@ class RpeAligner(PreprocessingStep):
         align_y = h // 2 if self.target_row is None else self.target_row
         aligned_image = np.zeros_like(image)
 
-        # 7. Shift raw image columns
+        # Shift image columns
         for x in range(w):
             shift = align_y - smoothed_rpe_depths[x]
 

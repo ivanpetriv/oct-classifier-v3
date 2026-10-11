@@ -105,7 +105,7 @@ class FeatureExtractorVisualizer:
                 alpha=0.7,
             )
 
-        return f"CDCH (Px: [{abs_center_x}, {abs_center_y}])", "Ray Angle Index"
+        return f"CDCH (Center: [{abs_center_x}, {abs_center_y}])", "Ray Angle Index"
 
     def visualize(self, image: np.ndarray, save_path: str | None = None) -> None:
         num_extractors = len(self.feature_extractors)
@@ -129,41 +129,57 @@ class FeatureExtractorVisualizer:
             ax_heat = axes[row_idx, 1]
 
             features = extractor.extract(image)
+            is_ldch = isinstance(extractor, LdchFeaturesExtractor)
 
-            # 1. Base Image Setup
+            if is_ldch:
+                features = features.T
+
+            if isinstance(extractor, CdchFeaturesExtractor):
+                features = np.flipud(features)
+
             ax_img.imshow(image, cmap="gray")
             ax_img.set_xlim(0, image_width)
             ax_img.set_ylim(image_height, 0)
             ax_img.axis("off")
 
-            # 2. Dynamic Overlay Routing
             if isinstance(extractor, CdchFeaturesExtractor):
-                title, y_label = self._visualize_cdch(extractor, image, ax_img)
-            elif isinstance(extractor, LdchFeaturesExtractor):
-                title, y_label = self._visualize_ldch(extractor, image, ax_img)
+                title, dynamic_label = self._visualize_cdch(extractor, image, ax_img)
+            elif is_ldch:
+                title, dynamic_label = self._visualize_ldch(extractor, image, ax_img)
             elif isinstance(extractor, RdchFeaturesExtractor):
-                title, y_label = self._visualize_rdch(extractor, image, ax_img)
+                title, dynamic_label = self._visualize_rdch(extractor, image, ax_img)
             else:
                 title = type(extractor).__name__
-                y_label = "Index"
+                dynamic_label = "Index"
 
-            ax_img.set_title(title)
+            ax_img.set_title(title, fontsize=22)
 
-            # 3. Heatmap Setup
-            # Set aspect="auto" to prevent the charts from being squashed
             im = ax_heat.imshow(
-                features, cmap="gray", aspect="auto", interpolation="nearest"
+                features,
+                cmap="gray",
+                aspect="auto",
+                interpolation="nearest",
+                origin="lower",
             )
 
-            ax_heat.set_title(f"Extracted Matrix ({type(extractor).__name__})")
-            ax_heat.set_xlabel("Intensity Bins")
-            ax_heat.set_ylabel(y_label)
+            ax_heat.set_title(f"{type(extractor).__name__}", fontsize=22)
 
-            # Attach colorbar cleanly
+            if is_ldch:
+                ax_heat.set_ylabel("Intensity Bins", fontsize=18)
+                ax_heat.set_xlabel(dynamic_label, fontsize=18)
+            else:
+                ax_heat.set_ylabel("Intensity Bins", fontsize=18)
+                ax_heat.set_xlabel(dynamic_label, fontsize=18)
+
+            ax_heat.tick_params(axis="both", which="major", labelsize=16)
+
             divider = make_axes_locatable(ax_heat)
             cax = divider.append_axes("right", size="5%", pad=0.15)
             cbar = plt.colorbar(im, cax=cax)
-            cbar.set_label("Normalized Frequency", rotation=270, labelpad=15)
+            cbar.set_label(
+                "Normalized Frequency", rotation=270, labelpad=20, fontsize=18
+            )
+            cbar.ax.tick_params(labelsize=16)
 
         # Ensure subplots don't overlap their labels
         plt.tight_layout()

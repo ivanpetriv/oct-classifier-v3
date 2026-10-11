@@ -22,11 +22,38 @@ class Dataset(BaseModel):
         val: int = Field(..., gt=0)
         test: int = Field(..., gt=0)
 
-    classes: list[str]
+    classes: list[str] | dict[str, str]
 
     samples_per_class: int = Field(..., gt=0)
 
     sampling_proportions: SamplingProportions
+
+
+class DwtDenoiserConfig(BaseModel):
+    wavelet: str
+    mode: str
+    wavelet_levels: int
+    method: str = "BayesShrink"
+    rescale_sigma: bool = False
+    channel_axis: int | None = None
+
+
+class ResizerConfig(BaseModel):
+    target_size: tuple[int, int]
+
+
+class RpeAlignerConfig(BaseModel):
+    blur_sigma: int
+    poly_degree: int
+    max_jump: int
+
+
+class RpeRoiExtractorConfig(BaseModel):
+    roi_above: int
+    roi_below: int
+    blur_sigma: int
+    max_jump: int
+    poly_degree: int
 
 
 # ============================================================
@@ -152,14 +179,14 @@ class SVMConfig(BaseModel):
         kernel: Literal["linear"]
         C: float
         shrinking: bool
-        class_weight: str | None
+        class_weight: str | dict[int, int] | None
 
     class RbfParams(BaseModel):
         kernel: Literal["rbf"]
         C: float
         gamma: str | float
         shrinking: bool
-        class_weight: str | None
+        class_weight: str | dict[int, int] | None
 
     class PolyParams(BaseModel):
         kernel: Literal["poly"]
@@ -167,7 +194,7 @@ class SVMConfig(BaseModel):
         gamma: str | float
         degree: int
         shrinking: bool
-        class_weight: str | None
+        class_weight: str | dict[int, int] | None
 
     active: Literal["svm"]
     params: LinearParams | RbfParams | PolyParams = Field(..., discriminator="kernel")
@@ -203,9 +230,20 @@ class KNNConfig(BaseModel):
     active: Literal["knn"]
     params: Params
 
+class LRConfig(BaseModel):
+    class Params(BaseModel):
+        C: float
+        class_weight: Literal["balanced"] | None
+        solver: Literal["lbfgs", "saga"]
+        max_iter: int
+        random_state: int | None
+
+    active: Literal["logistic_regression"]
+    params: Params
+
 
 ClassifierConfig = Annotated[
-    SVMConfig | RandomForestConfig | KNNConfig,
+    SVMConfig | RandomForestConfig | KNNConfig | LRConfig,
     Field(discriminator="active"),
 ]
 
@@ -221,7 +259,16 @@ class OctConfig(BaseModel):
     paths: Paths
     random_seed: int
     dataset: Dataset
-    preprocessing_pipeline: list[dict[str, dict[str, Any]]]
+    preprocessing_pipeline: list[
+        dict[
+            str,
+            DwtDenoiserConfig
+            | ResizerConfig
+            | RpeAlignerConfig
+            | RpeRoiExtractorConfig
+            | dict[str, Any],
+        ]
+    ]
 
     feature_extractor: list[dict[str, dict[str, Any]]] | list[FeatureExtractorConfig]
 
